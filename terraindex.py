@@ -228,12 +228,16 @@ class TerraIndex:
     def getBorelogImage(self, feature):
         fields = [field.name() for field in feature.fields()]
         
-        req = {'ProjectID', 'MeasurementPointID'}
+        req = ['ProjectID', 'MeasurementPointID']
 
-        if req.issubset(fields):
-            
-
-        
+        if set(req).issubset(fields):
+            projectID = feature[req[0]]
+            measurementPointID = feature[req[1]]
+            print(projectID)
+            print(measurementPointID)
+        else:
+            #show warning maybe
+            pass
 
 
 
@@ -277,6 +281,7 @@ class PointTool(QgsMapToolIdentify):
         
         self.canvas = canvas    
         self.iface = iface
+        self.plugin = plugin
 
         self.selected_feature = None
         #QApplication.instance().setOverrideCursor(Qt.ArrowCursor)
