@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>232</width>
-    <height>141</height>
+    <width>382</width>
+    <height>250</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,12 +15,19 @@
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0">
+    <item row="1" column="0">
      <widget class="QLabel" name="label">
       <property name="text">
        <string>Replace this QLabel
 with the desired
 plugin content.</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="0">
+     <widget class="QPushButton" name="PB_boreprofile">
+      <property name="text">
+       <string>Check Boreprofile</string>
       </property>
      </widget>
     </item>

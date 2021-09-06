@@ -24,6 +24,9 @@
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
+
+from qgis.gui import QgsMapTool, QgsMapToolIdentify
+from qgis.core import QgsRectangle, QgsVectorLayer
 # Initialize Qt resources from file resources.py
 from .resources import *
 
@@ -69,6 +72,7 @@ class TerraIndex:
         self.toolbar.setObjectName(u'TerraIndex')
 
         #print "** INITIALIZING TerraIndex"
+        self.map_tool = None
 
         self.pluginIsActive = False
         self.dockwidget = None
@@ -170,7 +174,7 @@ class TerraIndex:
         icon_path = ':/plugins/terraindex/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u''Text for the menu item''),
+            text=self.tr(u'Text for the menu item'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
@@ -179,10 +183,14 @@ class TerraIndex:
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
 
-        #print "** CLOSING TerraIndex"
+        print('Closing TerraIndex')
 
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
+
+        # reset maptool
+        self.iface.mapCanvas().unsetMapTool(self.map_tool)
+        self.iface.mapCanvas().setMapTool(self.last_map_tool)
 
         # remove this statement if dockwidget is to remain
         # for reuse if plugin is reopened
@@ -208,6 +216,27 @@ class TerraIndex:
 
     #--------------------------------------------------------------------------
 
+    def setMapTool(self):
+        if type(self.iface.mapCanvas().mapTool()) is type(self.map_tool) and self.map_tool is not None:
+            print('type=type')
+        else:
+            print('set maptool')
+            self.map_tool = PointTool(self.iface, self.iface.mapCanvas(), self)
+            self.last_map_tool = self.iface.mapCanvas().mapTool()
+            self.iface.mapCanvas().setMapTool(self.map_tool)
+    
+    def getBorelogImage(self, feature):
+        fields = [field.name() for field in feature.fields()]
+        
+        req = {'ProjectID', 'MeasurementPointID'}
+
+        if req.issubset(fields):
+            
+
+        
+
+
+
     def run(self):
         """Run method that loads and starts the plugin"""
 
@@ -225,8 +254,72 @@ class TerraIndex:
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
-
+            self.dockwidget.PB_boreprofile.clicked.connect(self.setMapTool)
+            # initialize pointtool
+            self.setMapTool()
+            
             # show the dockwidget
             # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
             self.dockwidget.show()
+
+                
+
+            
+
+        
+
+
+
+class PointTool(QgsMapToolIdentify):   
+    def __init__(self, iface, canvas, plugin):
+        QgsMapToolIdentify.__init__(self, canvas)
+        
+        self.canvas = canvas    
+        self.iface = iface
+
+        self.selected_feature = None
+        #QApplication.instance().setOverrideCursor(Qt.ArrowCursor)
+
+    def canvasPressEvent(self, event):
+        pass
+
+    def canvasMoveEvent(self, event):
+        pass
+
+    def canvasReleaseEvent(self, event):
+        found_features = self.identify(event.x(), event.y(),
+                                self.TopDownStopAtFirst,
+                                self.VectorLayer) 
+        
+        if len(found_features) > 0:
+            help(found_features[0])
+            layer = found_features[0].mLayer
+            feature = found_features[0].mFeature
+            layer.removeSelection()
+            layer.select(feature.id())
+            self.setSelectedFeature(feature)
+        else:
+            for layer in self.canvas.layers():
+                if layer.type() == layer.VectorLayer:
+                    layer.removeSelection()
+            self.unsetSelectedFeature()
+        
+    def setSelectedFeature(self, feature):
+        self.selected_feature = feature
+        self.plugin.getBorelogImage(feature)
+    
+    def unsetSelectedFeature(self):
+        self.selected_feature = None
+    
+    def getSelectedFeature(self):
+        return self.selected_feature
+
+    def isZoomTool(self):
+        return False
+
+    def isTransient(self):
+        return False
+
+    def isEditTool(self):
+        return False
