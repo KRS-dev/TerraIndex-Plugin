@@ -43,7 +43,7 @@ import base64
 from io import BytesIO
 from PIL import Image
 
-# Namespaces of the SOAP request
+# Namespaces for the SOAP request
 ns = {
     's': "http://www.w3.org/2003/05/soap-envelope",
     'a': "http://www.w3.org/2005/08/addressing",
@@ -56,18 +56,21 @@ ns = {
 ## Defining to useful wrapper functions
 
 def login(func):
-    """Login Wrapper to check if user credentials are available or ask for credentials"""
+    """Login Wrapper to check if user credentials are available or ask for the credentials."""
 
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
 
         value = None
         if self.username is None or self.password is None or self.ln is None or self.ac is None:
-
+            
+            # Initialize the dialog for credentials
             dialog = TerraIndexLoginDialog(
                 self.username, self.password, self.ln, self.ac)
-
-            dialog.exec_()
+            
+            # Wait until Ok is clicked
+            # .open() ._exec() do almost the same thing, forgot what the exact difference was 
+            dialog._exec()
 
             (success, user, passwd, ln, ac) = dialog.getCredentials()
             print(success)
@@ -77,6 +80,8 @@ def login(func):
                 self.password = passwd
                 self.ln = ln
                 self.applicationcode = ac
+
+                # evaluate the actual function
                 value = func(self, *args, **kwargs)
 
         elif self.response_check is False:
@@ -85,12 +90,12 @@ def login(func):
             dialog = TerraIndexLoginDialog(
                 self.username, self.password, self.ln, self.ac, self.errormessage)
 
-            dialog.open()
+            dialog._exec()
 
             (success, user, passwd, ln, ac) = dialog.getCredentials()
             print(success)
 
-            if success:
+            if success is 1:
                 self.username = user
                 self.password = passwd
                 self.ln = ln
@@ -125,7 +130,7 @@ def loadingbar(func):
 
 ## Main Class
 class TerraIndex:
-    """QGIS Plugin Implementation."""
+    """TerraIndex Plugin Implementation """
 
     def __init__(self, iface):
         """Constructor.
@@ -148,6 +153,7 @@ class TerraIndex:
             'i18n',
             'TerraIndex_{}.qm'.format(locale))
 
+        # Setting up the translator, not used in plugin
         if os.path.exists(locale_path):
             self.translator = QTranslator()
             self.translator.load(locale_path)
@@ -179,11 +185,14 @@ class TerraIndex:
         self.response_check = True
         self.errormessage = None
 
+        # Load in the layout file
         with open(os.path.join(self.plugin_dir, '4op1blad.ini')) as f:
             ini = f.read().replace('\n', '')
             self.borelog_parameters['Layout'] = ini
 
         self.pluginIsActive = False
+
+        # Main widget ui reference, is instantiated in run()
         self.dockwidget = None
 
     # noinspection PyMethodMayBeStatic
@@ -297,6 +306,7 @@ class TerraIndex:
 
         # reset maptool
         self.iface.mapCanvas().unsetMapTool(self.map_tool)
+        # set map tool to the previous one
         self.iface.mapCanvas().setMapTool(self.last_map_tool)
 
         # remove this statement if dockwidget is to remain
@@ -323,6 +333,7 @@ class TerraIndex:
     # --------------------------------------------------------------------------
 
     def setMapTool(self):
+
         if type(self.iface.mapCanvas().mapTool()) is type(self.map_tool) and self.map_tool is not None:
             print('type=type')
         else:
@@ -332,6 +343,7 @@ class TerraIndex:
 
     @login
     def getBorelogImage(self, feature):
+        
         fields = [field.name() for field in feature.fields()]
 
         req = ['ProjectID', 'MeasurementPointID']

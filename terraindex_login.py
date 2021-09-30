@@ -27,4 +27,5 @@ class TerraIndexLoginDialog(QtWidgets.QDialog, FORM_CLASS):
         
     
     def getCredentials(self):
+        # self.result() = 1 if Ok clicked, 0 if cancelled or closed
         return self.result(), self.username.text, self.password.text, self.licensenumber.text, self.applicationcode.text
