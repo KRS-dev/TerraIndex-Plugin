@@ -33,25 +33,15 @@ from .resources import *
 # Import the code for the DockWidget
 from .terraindex_dockwidget import TerraIndexDockWidget
 from .terraindex_login import TerraIndexLoginDialog
+from .terraindex_borelog_request import TIBorelogRequest, testconnection
+from .terraindex_selection_tool import TISelectionTool
+
 import os.path
 import functools
 
 # Import for requests
 import requests
-import xml.etree.ElementTree as ET
-import base64
-from io import BytesIO
-from PIL import Image
 
-# Namespaces for the SOAP request
-ns = {
-    's': "http://www.w3.org/2003/05/soap-envelope",
-    'a': "http://www.w3.org/2005/08/addressing",
-    'terraindex': "https://wsterraindex.terraindex.com/ITWorks.TerraIndex/",
-    'b': "http://schemas.datacontract.org/2004/07/ITWorks.BusinessEntities.Boreprofile",
-    'i': "http://www.w3.org/2001/XMLSchema-instance",
-    'c': "http://schemas.datacontract.org/2004/07/ITWorks.BusinessEntities.Authorisation"
-}
 
 ## Defining to useful wrapper functions
 
@@ -62,70 +52,56 @@ def login(func):
     def wrapper(self, *args, **kwargs):
 
         value = None
-        if self.username is None or self.password is None or self.ln is None or self.ac is None:
-            
-            # Initialize the dialog for credentials
-            dialog = TerraIndexLoginDialog(
-                self.username, self.password, self.ln, self.ac)
-            
-            # Wait until Ok is clicked
-            # .open() ._exec() do almost the same thing, forgot what the exact difference was 
-            dialog._exec()
 
-            (success, user, passwd, ln, ac) = dialog.getCredentials()
-            print(success)
+        def credentialPull(self, dialog, func):
+            success, user, passwd, ln, ac = dialog.getCredentials()
 
-            if success is 1:
+
+            if success is 1: ## clicked ok
+
                 self.username = user
                 self.password = passwd
                 self.ln = ln
                 self.applicationcode = ac
 
-                # evaluate the actual function
-                value = func(self, *args, **kwargs)
 
-        elif self.response_check is False:
-            print('ask for cred after wrong entry')
+                response = testconnection(self)
+
+                if response.status_code is requests.codes.ok:
+                    self.response_check = True
+                    # evaluate the actual function
+                    func(self, *args, **kwargs)
+                else:
+                    ## connection failed
+
+                    self.errormessage = response.reason
+
+                    setupCredentialsDialog(self)
+            
+            else: # Closed dialog any other way
+                pass
+
+        
+        def setupCredentialsDialog(self):
 
             dialog = TerraIndexLoginDialog(
                 self.username, self.password, self.ln, self.ac, self.errormessage)
+            
+            partialCredPull = functools.partial(credentialPull, self=self, dialog=dialog, func=func)
 
-            dialog._exec()
+            dialog.finished.connect(partialCredPull)
 
-            (success, user, passwd, ln, ac) = dialog.getCredentials()
-            print(success)
+            dialog.open()
+        
 
-            if success is 1:
-                self.username = user
-                self.password = passwd
-                self.ln = ln
-                self.ac = ac
-                value = func(self, *args, **kwargs)
+        if self.username is None or self.password is None or self.ln is None or self.ac is None:
+            setupCredentialsDialog(self)
         else:
-            value = func(self, *args, **kwargs)
+            func(self, *args, **kwargs)
 
-        return value
 
     return wrapper
 
-
-def loadingbar(func):
-
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-
-        bar = QProgressBar()
-        bar.setRange(0, 0)
-
-        self.iface.mainWindow().statusBar().insertWidget(1, bar)
-
-        value = func(self, *args, **kwargs)
-
-        self.iface.mainWindow().statusBar().removeWidget(bar)
-
-        return value
-
-    return wrapper
 
 
 ## Main Class
@@ -186,7 +162,7 @@ class TerraIndex:
         self.errormessage = None
 
         # Load in the layout file
-        with open(os.path.join(self.plugin_dir, '4op1blad.ini')) as f:
+        with open(os.path.join(self.plugin_dir, 'data' , '4op1blad.ini')) as f:
             ini = f.read().replace('\n', '')
             self.borelog_parameters['Layout'] = ini
 
@@ -305,6 +281,7 @@ class TerraIndex:
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
 
         # reset maptool
+        self.map_tool.removeAnnotations()
         self.iface.mapCanvas().unsetMapTool(self.map_tool)
         # set map tool to the previous one
         self.iface.mapCanvas().setMapTool(self.last_map_tool)
@@ -337,9 +314,18 @@ class TerraIndex:
         if type(self.iface.mapCanvas().mapTool()) is type(self.map_tool) and self.map_tool is not None:
             print('type=type')
         else:
-            self.map_tool = PointTool(self.iface, self.iface.mapCanvas(), self)
+            self.map_tool = TISelectionTool(self.iface, self)
             self.last_map_tool = self.iface.mapCanvas().mapTool()
             self.iface.mapCanvas().setMapTool(self.map_tool)
+
+    def getAuthorisationInfo(self):
+        d = {
+            'ApplicationCode': self.ac,
+            'Licensenumber': self.ln,
+            'Username': self.username,
+            'Password': self.password,
+        }
+        return d
 
     @login
     def getBorelogImage(self, feature):
@@ -354,7 +340,7 @@ class TerraIndex:
             #print(projectID)
             #print(measurementPointID)
 
-            request = BorelogRequest(self)
+            request = TIBorelogRequest(self)
 
             request.addBorehole(measurementPointID, projectID)
 
@@ -364,7 +350,12 @@ class TerraIndex:
                 print('set false')
                 self.response_check = False
                 self.errormessage = response.reason
+
+                print(response.reason)
+                print(response)
             else:
+                print('response check true')
+                print(image)
                 self.response_check = True
                 self.errormessage = None
                 pixmap = QPixmap()
@@ -396,7 +387,7 @@ class TerraIndex:
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
             self.dockwidget.PB_boreprofile.clicked.connect(self.setMapTool)
-            # initialize pointtool
+            # initialize TISelectionTool
             self.setMapTool()
 
             # show the dockwidget
@@ -406,154 +397,3 @@ class TerraIndex:
 
 
 
-class PointTool(QgsMapToolIdentify):
-    """Pointtool class, which overwrites the normal cursor during use of the plugin"""
-    def __init__(self, iface, canvas, plugin):
-        QgsMapToolIdentify.__init__(self, canvas)
-
-        self.canvas = canvas
-        self.iface = iface
-        self.plugin = plugin
-
-        self.selected_feature = None
-        # QApplication.instance().setOverrideCursor(Qt.ArrowCursor)
-
-    def canvasPressEvent(self, event):
-        pass
-
-    def canvasMoveEvent(self, event):
-        pass
-
-    def canvasReleaseEvent(self, event):
-        found_features = self.identify(event.x(), event.y(),
-                                       self.TopDownStopAtFirst,
-                                       self.VectorLayer)
-
-        if len(found_features) > 0:
-            layer = found_features[0].mLayer
-            feature = found_features[0].mFeature
-            layer.removeSelection()
-            layer.select(feature.id())
-            self.setSelectedFeature(feature)
-        else:
-            for layer in self.canvas.layers():
-                if layer.type() == layer.VectorLayer:
-                    layer.removeSelection()
-            self.unsetSelectedFeature()
-
-    def setSelectedFeature(self, feature):
-        self.selected_feature = feature
-        self.plugin.getBorelogImage(feature)
-
-    def unsetSelectedFeature(self):
-        self.selected_feature = None
-
-    def getSelectedFeature(self):
-        return self.selected_feature
-
-    def isZoomTool(self):
-        return False
-
-    def isTransient(self):
-        return False
-
-    def isEditTool(self):
-        return False
-
-
-## 
-
-class BorelogRequest:
-    """Request class for the SOAP requests to the servers."""
-
-    def __init__(self, plugin):
-        self.plugin = plugin
-        self.iface = plugin.iface
-
-        self.username = plugin.username
-        self.password = plugin.password
-        self.ln = plugin.ln
-        self.ac = plugin.ac
-
-        self.borelogParameters = plugin.borelog_parameters
-
-        # TO-DO: availability for multiple boreholes
-        self.boreholes = []
-
-        self.xml = None
-
-    def addBorehole(self, boreHoleID, projectID):
-        self.boreholes.append(
-            {'BoreHoleID': str(boreHoleID), 'ProjectID': str(projectID)})
-
-    def getAuthorisationInfo(self):
-        d = {
-            'ApplicationCode': self.ac,
-            'Licensenumber': self.ln,
-            'Username': self.username,
-            'Password': self.password,
-        }
-        return d
-
-    def setXMLparameters(self):
-
-        xmlfile = os.path.join(self.plugin.plugin_dir,
-                               'Borelog_Request_SOAP.xml')
-
-        with open(xmlfile, 'r') as f:
-            xml_base = f.read()
-
-        root = ET.fromstring(xml_base)
-
-        for key, val in self.getAuthorisationInfo().items():
-            elem = root.find('.//c:{}'.format(key), ns)
-            elem.text = str(val)
-
-        for key, val in self.borelogParameters.items():
-            elem = root.find('.//b:{}'.format(key), ns)
-            elem.text = str(val)
-
-        assert len(self.boreholes) > 0, 'no boreholes selected'
-
-        # TO-DO: adding multiple boreholes
-        for key, val in self.boreholes[0].items():
-            elem = root.find('.//b:{}'.format(key), ns)
-            elem.text = str(val)
-
-        self.xml = ET.tostring(root, encoding='unicode')
-
-    @loadingbar
-    def request(self):
-
-        if self.xml is None:
-            self.setXMLparameters()
-
-        url = 'https://web.terraindex.com/DataWS/ITWBoreprofileService_V1_0.svc?singleWsdl'
-
-        headers = {'content-type': 'application/soap+xml'}
-
-        response = requests.post(url=url, data=self.xml, headers=headers)
-        image = None
-
-        if response.status_code is requests.codes.ok:
-            content = response.content
-            root_content = ET.fromstring(content)
-
-            bytes64 = root_content.find('.//b:Content', ns).text
-            image = BoreHoleImage(bytes64=bytes64, **self.boreholes[0])
-
-        return response, image
-
-
-class BoreHoleImage:
-    """Simple class to keep the image together with the boreholeID and projectID."""
-    def __init__(self,  BoreHoleID, ProjectID, bytes64=None):
-        self.id = BoreHoleID
-        self.projectID = ProjectID
-        self.bytes = base64.b64decode(bytes64)
-
-        # with BytesIO(self.bytes) as stream:
-        #     self.image = Image.open(stream).convert("RGBA")
-
-    # def show(self):
-    #     self.image.show()
