@@ -41,26 +41,26 @@ def loadingbar(func):
     return wrapper
 
 
-def testconnection(plugin) -> requests.Response:
-    """Test request for login parameters
+# def testconnection(plugin) -> requests.Response:
+#     """Test request for login parameters
 
-    Parameters
-    ----------
-    plugin : TerraIndex
-        plugin class reference for credentials
+#     Parameters
+#     ----------
+#     plugin : TerraIndex
+#         plugin class reference for credentials
 
-    Returns
-    -------
-    requests.Response
-        Response object for response codes
-    """
+#     Returns
+#     -------
+#     requests.Response
+#         Response object for response codes
+#     """
 
-    request = TIBorelogRequest(plugin)
-    request.addBorehole(48, 11437)
+#     request = TIBorelogRequest(plugin)
+#     request.addBorehole(48, 11437)
 
-    response = request.request()
+#     response = request.request()
 
-    return response
+#     return response
 
 
 class TIBorelogRequest:
@@ -97,15 +97,21 @@ class TIBorelogRequest:
             'OutputType': kwargs.get('OutputType', 'PNG'),
             'DrawMode': kwargs.get('DrawMode', 'Single'), # Single, Multipage, Page
             'DrawKind': kwargs.get('DrawKind', 'BoreHole'),  # BoreHole, Legend
-            #'LayoutName': 'boorstaat Bodem'
+            'LayoutName': '',
             'Layout' : None
         }
 
         # Load in the layout file
         # TO-DO: Selection of ini files
-        with open(os.path.join(self.plugin.plugin_dir, 'data', r'depots 4 blad.txt'), encoding='utf8') as f:
-            ini = f.read()#.replace('\n', '')
-            self.borelogParameters['Layout'] = ini
+        # with open(os.path.join(self.plugin.plugin_dir, 'data', r'depots 4 blad.txt'), encoding='utf8') as f:
+        #     ini = f.read()#.replace('\n', '')
+        #     self.borelogParameters['Layout'] = ini
+
+        layoutID = self.plugin.dockwidget.CB_layout.currentData()
+        layout = self.plugin.layoutsDict[layoutID]
+
+        self.borelogParameters['Layout'] = layout['TemplateFile']
+        self.borelogParameters['LayoutName'] = layout['TemplateName']
 
         self.boreholes = []
 

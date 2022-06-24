@@ -15,6 +15,9 @@
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
+    <item row="3" column="0">
+     <widget class="QGraphicsView" name="graphicsView"/>
+    </item>
     <item row="0" column="0">
      <widget class="QPushButton" name="PB_boreprofile">
       <property name="text">
@@ -22,15 +25,15 @@
       </property>
      </widget>
     </item>
-    <item row="2" column="0">
-     <widget class="QGraphicsView" name="graphicsView"/>
-    </item>
     <item row="1" column="0">
      <widget class="QPushButton" name="PB_downloadpdf">
       <property name="text">
        <string>PushButton</string>
       </property>
      </widget>
+    </item>
+    <item row="2" column="0">
+     <widget class="QComboBox" name="CB_layout"/>
     </item>
    </layout>
   </widget>

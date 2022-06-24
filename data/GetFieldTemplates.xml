@@ -1,0 +1,41 @@
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:lib="https://wsterraindex.terraindex.com/Library/" xmlns:itw="http://schemas.datacontract.org/2004/07/ITWorks.BusinessEntities.FieldTemplate" xmlns:itw1="http://schemas.datacontract.org/2004/07/ITWorks.BusinessEntities.Authorisation" xmlns:a="http://www.w3.org/2005/08/addressing">
+   <soap:Header>
+        <a:Action soap:mustUnderstand="1">https://wsterraindex.terraindex.com/Library/IITWFieldTemplateService/GetFieldTemplates</a:Action>
+        <a:MessageID>urn:uuid:043d050d-c261-442b-8057-272a49d349b9</a:MessageID>
+        <a:ReplyTo>
+            <a:Address>http://www.w3.org/2005/08/addressing/anonymous</a:Address>
+        </a:ReplyTo>
+        <a:To soap:mustUnderstand="1">https://web.terraindex.com/LibraryWS/ITWFieldTemplateService_V1_0.svc</a:To>
+    </soap:Header>
+   
+   <soap:Body>
+      <lib:GetFieldTemplates>
+         <!--Optional:-->
+         <lib:request>
+            <!--Optional:-->
+            <itw:AuthorisationRequest>
+               <!--Optional:-->
+               <itw1:ApplicationCode>?</itw1:ApplicationCode>
+               <!--Optional:-->
+               <!-- <itw1:FeatureWord>?</itw1:FeatureWord> -->
+               <!--Optional:-->
+               <itw1:Licensenumber>?</itw1:Licensenumber>
+               <!--Optional:-->
+               <!-- <itw1:Password>?</itw1:Password> -->
+               <!--Optional:-->
+               <itw1:Username>?</itw1:Username>
+            </itw:AuthorisationRequest>
+            <!--Optional:-->
+            <itw:IsTerraIndex>false</itw:IsTerraIndex>
+            <!--Optional:-->
+            <itw:WebserviceVersion>1.0</itw:WebserviceVersion>
+            <!--Optional:-->
+            <itw:LinkedTemplatesOnly>false</itw:LinkedTemplatesOnly>
+            <!--Optional:-->
+            <itw:TemplateID>0</itw:TemplateID>
+            <!--Optional:-->
+            <itw:UseZipStream>false</itw:UseZipStream>
+         </lib:request>
+      </lib:GetFieldTemplates>
+   </soap:Body>
+</soap:Envelope>

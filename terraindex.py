@@ -32,8 +32,9 @@ from .resources import *
 # Import the code for the DockWidget
 from .terraindex_dockwidget import TerraIndexDockWidget
 from .terraindex_login import TerraIndexLoginDialog
-from .terraindex_borelog_request import TIBorelogRequest, testconnection
+from .terraindex_borelog_request import TIBorelogRequest
 from .terraindex_selection_tool import TISelectionTool
+from .terraindex_layouts_request import layoutsRequest
 
 import os.path
 import functools
@@ -91,7 +92,7 @@ def login(func):
 
 
                     self.errormessage = results['Message']
-                    dialog.setText(self.errormessage)
+                    dialog.message.setText(self.errormessage)
 
 
                     dialog.open()
@@ -165,13 +166,14 @@ class TerraIndex:
 
         self.TILayer = None
       
-
         self.token = None
         self.session_start_t = 0
         self.username = None
         self.licensenumber = None
         self.applicationcode = None
         self.errormessage = None
+
+        self.layoutsDict = None
 
 
         self.pluginIsActive = False
@@ -351,14 +353,13 @@ class TerraIndex:
             self.last_map_tool = self.iface.mapCanvas().mapTool()
             self.iface.mapCanvas().setMapTool(self.map_tool)
 
-    # def getAuthorisationInfo(self):
-    #     d = {
-    #         'ApplicationCode': self.ac,
-    #         'Licensenumber': self.ln,
-    #         'Username': self.username,
-    #         'Password': self.password,
-    #     }
-    #     return d
+    def getAuthorisationInfo(self):
+        d = {
+            'ApplicationCode': self.applicationcode,
+            'Licensenumber': self.licensenumber,
+            'Username': self.username,
+        }
+        return d
 
     @login
     def getBorelogImage(self, feature):
@@ -434,6 +435,16 @@ class TerraIndex:
                 f.write(bytes)
 
             webbrowser.open(filename)
+
+    @login
+    def getLayouts(self):
+        self.layoutsDict = layoutsRequest(self, 1)
+        for key, val in self.layoutsDict.items():
+            ## adds the names as text to the combobox and layoutid as data
+
+            self.dockwidget.CB_layout.addItem(val['TemplateName'], userData=key)
+
+
     
     def downloadPDF(self):
         
@@ -462,6 +473,12 @@ class TerraIndex:
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
             self.dockwidget.PB_boreprofile.clicked.connect(self.setMapTool)
             self.dockwidget.PB_downloadpdf.clicked.connect(self.downloadPDF)
+
+            # Load the layouts
+            if self.layoutsDict == None:
+                self.getLayouts()
+
+
             # initialize TISelectionTool
             self.setMapTool()
             self.initTILayer()
