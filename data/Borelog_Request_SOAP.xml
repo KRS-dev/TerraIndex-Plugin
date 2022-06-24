@@ -16,7 +16,6 @@
                     <c:ApplicationCode>{applicationcode}</c:ApplicationCode>
                     <c:FeatureWord>0</c:FeatureWord>
                     <c:Licensenumber>{licensenumber}</c:Licensenumber>
-                    <c:Password>{password}</c:Password>
                     <c:Username>{username}</c:Username>
                 </b:AuthorisationRequest>
                 <b:BorelogParameters>

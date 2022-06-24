@@ -1,4 +1,6 @@
 import os
+from pickle import NONE
+import requests, json
 
 from qgis.PyQt import QtGui, QtWidgets, uic
 
@@ -27,7 +29,26 @@ class TerraIndexLoginDialog(QtWidgets.QDialog, FORM_CLASS):
 
         
     
-    def getCredentials(self):
-  
+    def getToken(self):
+        
+        results = None
+        if self.result() == 1:
+            url = r'https://web.terraindex.com/ReportWS/tokenmanager/ReportingToken'
+
+            body = {
+                'Username': self.username.text(),
+                'Password': self.password.text(),
+                'Licensenumber': self.licensenumber.text(),
+                'ApplicationCode': self.applicationcode.text()
+            }
+
+            headers = {
+                'Content-Type': 'application/json'
+            }
+
+
+            r = requests.post(url=url, data=json.dumps(body), headers=headers)
+            results = r.json()
+
         # self.result() = 1 if Ok clicked, 0 if cancelled or closed
-        return self.result(), self.username.text(), self.password.text(), self.licensenumber.text(), self.applicationcode.text()
+        return self.result(), results, self.username.text(), self.licensenumber.text(), self.applicationcode.text()

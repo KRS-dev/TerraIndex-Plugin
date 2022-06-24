@@ -126,8 +126,14 @@ class TIBorelogRequest:
 
         root = ET.fromstring(xml_base)
 
-        #
-        for key, val in self.plugin.getAuthorisationInfo().items():
+        
+        authorisationParameters ={
+            'Username' : self.plugin.username,
+            'ApplicationCode' : self.plugin.applicationcode,
+            'Licensenumber': self.plugin.licensenumber
+        }
+
+        for key, val in authorisationParameters.items():
             elem = root.find('.//c:{}'.format(key), ns)
             elem.text = str(val)
 
@@ -158,7 +164,11 @@ class TIBorelogRequest:
 
         url = 'https://web.terraindex.com/DataWS/ITWBoreprofileService_V1_0.svc?singleWsdl'
 
-        headers = {'content-type': 'application/soap+xml'}
+        token = self.plugin.token
+
+        headers = {'content-type': 'application/soap+xml',
+            'Authorization' : 'Bearer {}'.format(token) 
+        }
 
         response = requests.post(url=url, data=self.xml, headers=headers)
         # image = None

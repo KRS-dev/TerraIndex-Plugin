@@ -37,6 +37,7 @@ from .terraindex_selection_tool import TISelectionTool
 
 import os.path
 import functools
+import time
 
 # Import for requests
 import requests, base64
@@ -64,22 +65,23 @@ def login(func):
     def wrapper(self, *args, **kwargs):
 
         def credentialPull(self, dialog, func):
-            success, user, passwd, ln, ac = dialog.getCredentials()
+            success, results, username, licensenumber, applicationcode = dialog.getToken()
 
 
             if success is 1: ## clicked ok
 
-                self.username = user
-                self.password = passwd
-                self.ln = ln
-                self.applicationcode = ac
 
 
-                response = testconnection(self)
 
-                if response.status_code is requests.codes.ok:
+                if results['ResultCode'] is 0:
                     
+                    self.session_start_t = time.time()
+                    self.token = results['Result']
                     self.errormessage = ''
+
+                    self.username = username
+                    self.licensenumber = licensenumber
+                    self.applicationcode = applicationcode
 
                     self.authorisationBool = True
                     # evaluate the actual function
@@ -87,18 +89,21 @@ def login(func):
                 else:
                     ## connection failed
 
-                    self.errormessage = response.reason
 
-                    setupCredentialsDialog(self)
-            
+                    self.errormessage = results['Message']
+                    dialog.setText(self.errormessage)
+
+
+                    dialog.open()
+
+
             else: # Closed dialog any other way
                 pass
 
         
         def setupCredentialsDialog(self):
 
-            dialog = TerraIndexLoginDialog(
-                self.username, self.password, self.ln, self.ac, self.errormessage)
+            dialog = TerraIndexLoginDialog(message = self.errormessage)
             
             partialCredPull = functools.partial(credentialPull, self=self, dialog=dialog, func=func)
 
@@ -106,8 +111,8 @@ def login(func):
 
             dialog.open()
         
-
-        if self.username is None or self.password is None or self.ln is None or self.ac is None or self.authorisationBool is False:
+        # Check if we have a token or the token expired (~1 hour)
+        if self.token is None or time.time() - self.session_start_t > 3580:
             setupCredentialsDialog(self)
         else:
             func(self, *args, **kwargs)
@@ -161,12 +166,12 @@ class TerraIndex:
         self.TILayer = None
       
 
+        self.token = None
+        self.session_start_t = 0
         self.username = None
-        self.password = None
-        self.ln = 613
-        self.ac = 98
-        self.authorisationBool = False
-        self.errormessage = ''
+        self.licensenumber = None
+        self.applicationcode = None
+        self.errormessage = None
 
 
         self.pluginIsActive = False
@@ -346,14 +351,14 @@ class TerraIndex:
             self.last_map_tool = self.iface.mapCanvas().mapTool()
             self.iface.mapCanvas().setMapTool(self.map_tool)
 
-    def getAuthorisationInfo(self):
-        d = {
-            'ApplicationCode': self.ac,
-            'Licensenumber': self.ln,
-            'Username': self.username,
-            'Password': self.password,
-        }
-        return d
+    # def getAuthorisationInfo(self):
+    #     d = {
+    #         'ApplicationCode': self.ac,
+    #         'Licensenumber': self.ln,
+    #         'Username': self.username,
+    #         'Password': self.password,
+    #     }
+    #     return d
 
     @login
     def getBorelogImage(self, feature):
