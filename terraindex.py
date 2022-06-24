@@ -23,10 +23,9 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon, QPixmap
-from qgis.PyQt.QtWidgets import QAction, QGraphicsScene, QGraphicsPixmapItem, QProgressBar
+from qgis.PyQt.QtWidgets import QAction, QGraphicsScene, QGraphicsPixmapItem, QProgressBar, QFileDialog
+from qgis.core import Qgis, QgsProject, QgsVectorLayer, QgsDataSourceUri
 
-from qgis.gui import QgsMapTool, QgsMapToolIdentify
-from qgis.core import QgsRectangle, QgsVectorLayer, QgsCredentials
 # Initialize Qt resources from file resources.py
 from .resources import *
 
@@ -40,18 +39,29 @@ import os.path
 import functools
 
 # Import for requests
-import requests
+import requests, base64
+import xml.etree.ElementTree as ET
+from io import BytesIO
+import webbrowser
 
+
+## Namespaces for the SOAP request/response
+ns = {
+    's': "http://www.w3.org/2003/05/soap-envelope",
+    'a': "http://www.w3.org/2005/08/addressing",
+    'terraindex': "https://wsterraindex.terraindex.com/ITWorks.TerraIndex/",
+    'b': "http://schemas.datacontract.org/2004/07/ITWorks.BusinessEntities.Boreprofile",
+    'i': "http://www.w3.org/2001/XMLSchema-instance",
+    'c': "http://schemas.datacontract.org/2004/07/ITWorks.BusinessEntities.Authorisation"
+}
 
 ## Defining to useful wrapper functions
 
 def login(func):
-    """Login Wrapper to check if user credentials are available or ask for the credentials."""
+    """Login Wrapper to check if user credentialcheckTILainyinterAvailables are available or ask for the credentials."""
 
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
-
-        value = None
 
         def credentialPull(self, dialog, func):
             success, user, passwd, ln, ac = dialog.getCredentials()
@@ -68,7 +78,10 @@ def login(func):
                 response = testconnection(self)
 
                 if response.status_code is requests.codes.ok:
-                    self.response_check = True
+                    
+                    self.errormessage = ''
+
+                    self.authorisationBool = True
                     # evaluate the actual function
                     func(self, *args, **kwargs)
                 else:
@@ -94,7 +107,7 @@ def login(func):
             dialog.open()
         
 
-        if self.username is None or self.password is None or self.ln is None or self.ac is None:
+        if self.username is None or self.password is None or self.ln is None or self.ac is None or self.authorisationBool is False:
             setupCredentialsDialog(self)
         else:
             func(self, *args, **kwargs)
@@ -145,26 +158,16 @@ class TerraIndex:
         # print "** INITIALIZING TerraIndex"
         self.map_tool = None
 
-        self.borelog_parameters = {
-            'PageNumber': '1',
-            'Language': 'NL',
-            'OutputType': 'PNG',
-            'DrawMode': 'Single',
-            'DrawKind': 'BoreHole',
-            'Layout': None
-        }
+        self.TILayer = None
+      
 
         self.username = None
         self.password = None
         self.ln = 613
         self.ac = 98
-        self.response_check = True
-        self.errormessage = None
+        self.authorisationBool = False
+        self.errormessage = ''
 
-        # Load in the layout file
-        with open(os.path.join(self.plugin_dir, 'data' , '4op1blad.ini')) as f:
-            ini = f.read().replace('\n', '')
-            self.borelog_parameters['Layout'] = ini
 
         self.pluginIsActive = False
 
@@ -270,6 +273,31 @@ class TerraIndex:
             callback=self.run,
             parent=self.iface.mainWindow())
 
+    def initTILayer(self):
+
+        #TO-DO: not to hardcode the username and password here
+        uri = r"user='skemp' password='ikZKBDoVJv' maxNumFeatures='2000' pagingEnabled='true' preferCoordinatesForWfsT11='false' restrictToRequestBBOX='1' srsname='EPSG:4326' typename='ti-workspace:AllProjects_MeasurementPoints_pnt' url='https://gwr.geoserver.terraindex.com/geoserver/ti-workspace/ows' version='auto'"
+
+        layers = QgsProject.instance().mapLayers()
+        TILayer = None
+
+        for layer in layers.values():
+
+            src = QgsDataSourceUri(layer.source())
+
+
+            if src.hasParam('url') and src.hasParam('typename'):
+
+                if src.param('url') == 'https://gwr.geoserver.terraindex.com/geoserver/ti-workspace/ows' and src.param('typename') == 'ti-workspace:AllProjects_MeasurementPoints_pnt':
+                    TILayer = layer
+        
+        if TILayer is None:
+            TILayer = QgsVectorLayer(uri,'AllProjects_MeasurementPoints_pnt', 'WFS')
+            QgsProject.instance().addMapLayer(TILayer)
+
+        self.TILayer = TILayer
+            
+
     # --------------------------------------------------------------------------
 
     def onClosePlugin(self):
@@ -290,7 +318,7 @@ class TerraIndex:
         # for reuse if plugin is reopened
         # Commented next statement since it causes QGIS crashe
         # when closing the docked window:
-        # self.dockwidget = None
+        # self.dockwidget = None_summary_
 
         self.pluginIsActive = False
 
@@ -340,26 +368,25 @@ class TerraIndex:
             #print(projectID)
             #print(measurementPointID)
 
-            request = TIBorelogRequest(self)
+            request = TIBorelogRequest(self, )
 
             request.addBorehole(measurementPointID, projectID)
 
-            response, image = request.request()
+            response = request.request()
 
             if response.status_code is not requests.codes.ok:
-                print('set false')
-                self.response_check = False
-                self.errormessage = response.reason
-
-                print(response.reason)
-                print(response)
+                
+                self.iface.messageBar().pushMessage("Error", response.reason, level=Qgis.Critical)
             else:
-                print('response check true')
-                print(image)
-                self.response_check = True
-                self.errormessage = None
+                xml_content = ET.fromstring(response.content)
+
+                bytes64 = xml_content.find('.//b:Content', ns).text
+
+                bytes = base64.b64decode(bytes64)
+
+
                 pixmap = QPixmap()
-                pixmap.loadFromData(image.bytes, 'PNG')
+                pixmap.loadFromData(bytes, 'PNG')
                 pmitem = QGraphicsPixmapItem(pixmap)
                 scene = QGraphicsScene()
                 scene.addItem(pmitem)
@@ -368,6 +395,48 @@ class TerraIndex:
         else:
             # show warning maybe
             pass
+    
+    @login
+    def getBorelogsPDF(self, features):
+
+        boreholeid_list = []
+        for feature in features:
+            boreholeid_list.append({'ProjectID': feature['ProjectID'],
+                                'BoreHoleID': feature['MeasurementPointID']})
+        
+
+        request = TIBorelogRequest(self, DrawMode='MultiPage', OutputType='PDF')
+
+        for d in boreholeid_list:
+            request.addBorehole(**d)
+
+        
+        filename, _ = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save PDF:"), 'borelogs', self.tr('pdf (*.pdf)') )
+
+        response = request.request()
+        if response.status_code is not requests.codes.ok:
+            
+            self.iface.messageBar().pushMessage("Error", response.reason, level=Qgis.Critical)
+        else:
+            print('response check true')
+            xml_content = ET.fromstring(response.content)
+
+            bytes64 = xml_content.find('.//b:Content', ns).text
+
+            bytes = base64.b64decode(bytes64)
+
+            with open(filename, 'wb') as f:
+                f.write(bytes)
+
+            webbrowser.open(filename)
+    
+    def downloadPDF(self):
+        
+        features = self.TILayer.selectedFeatures()
+        if len(features) > 0 :
+            self.getBorelogsPDF(features)            
+
+
 
     def run(self):
         """Run method that loads and starts the plugin"""
@@ -387,8 +456,11 @@ class TerraIndex:
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
             self.dockwidget.PB_boreprofile.clicked.connect(self.setMapTool)
+            self.dockwidget.PB_downloadpdf.clicked.connect(self.downloadPDF)
             # initialize TISelectionTool
             self.setMapTool()
+            self.initTILayer()
+
 
             # show the dockwidget
             # TODO: fix to allow choice of dock location

@@ -1,13 +1,12 @@
-import requests, os, base64
+import requests
+import os
+import base64
 import xml.etree.ElementTree as ET
 import functools
 
 
-from qgis.PyQt.QtWidgets import QProgressBar
-
-
-
-
+from qgis.PyQt.QtWidgets import QProgressDialog
+# from qgis.PyQt
 
 # Namespaces for the SOAP request
 ns = {
@@ -24,15 +23,18 @@ def loadingbar(func):
 
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
+        
 
-        bar = QProgressBar()
-        bar.setRange(0, 0)
+        ## TODO: Fix progress dialog, it does not show.
+        progress = QProgressDialog("Querying TerraIndex...", "Cancel", 0,0, parent=self.iface.mainWindow(), minimumDuration=0)
+        progress.open()
+        # progress.setWindowModality()
 
-        self.iface.mainWindow().statusBar().insertWidget(1, bar)
 
         value = func(self, *args, **kwargs)
 
-        self.iface.mainWindow().statusBar().removeWidget(bar)
+        progress.reset()
+
 
         return value
 
@@ -53,42 +55,69 @@ def testconnection(plugin) -> requests.Response:
         Response object for response codes
     """
 
-
     request = TIBorelogRequest(plugin)
     request.addBorehole(48, 11437)
 
-    response, _ = request.request()
+    response = request.request()
 
     return response
 
 
-
-
 class TIBorelogRequest:
-    """Request class for the SOAP requests to the servers."""
+    """Request class for the SOAP requests to the servers.
 
-    def __init__(self, plugin):
+    Returns
+    -------
+    _type_
+        _description_
+    """    
+
+    
+
+    def __init__(self, plugin, **kwargs):
+        """_summary_
+
+        Parameters
+        ----------
+        plugin : _type_
+            _description_
+        """        
         self.plugin = plugin
         self.iface = plugin.iface
 
-        self.username = plugin.username
-        self.password = plugin.password
-        self.ln = plugin.ln
-        self.ac = plugin.ac
+        # self.username = kwargs.get('username', plugin.username)
+        # self.password = kwargs.get('password', plugin.password)
+        # self.ln = kwargs.get('licensenumber', plugin.ln)
+        # self.ac = kwargs.get('applicationcode', plugin.ac)
 
-        self.borelogParameters = plugin.borelog_parameters
+        self.borelogParameters = {
+            'PageNumber': kwargs.get('PageNumber', '1'),
+            'Language': kwargs.get('Language', 'NL'),
+            # BMP, WMF, EMF, JPG, PNG, DXF, PDF, GEF, TIFF
+            'OutputType': kwargs.get('OutputType', 'PNG'),
+            'DrawMode': kwargs.get('DrawMode', 'Single'), # Single, Multipage, Page
+            'DrawKind': kwargs.get('DrawKind', 'BoreHole'),  # BoreHole, Legend
+            #'LayoutName': 'boorstaat Bodem'
+            'Layout' : None
+        }
 
-        # TO-DO: availability for multiple boreholes
+        # Load in the layout file
+        # TO-DO: Selection of ini files
+        with open(os.path.join(self.plugin.plugin_dir, 'data', r'depots 4 blad.txt'), encoding='utf8') as f:
+            ini = f.read()#.replace('\n', '')
+            self.borelogParameters['Layout'] = ini
+
         self.boreholes = []
 
         self.xml = None
 
-    def addBorehole(self, boreHoleID: int, projectID: int):
+    def addBorehole(self, BoreHoleID: int, ProjectID: int):
         self.boreholes.append(
-            {'BoreHoleID': str(boreHoleID), 'ProjectID': str(projectID)})
+            {'BoreHoleID': str(BoreHoleID), 'ProjectID': str(ProjectID)})
 
     def setXMLparameters(self):
 
+        # Open the xml request blueprint
         xmlfile = os.path.join(self.plugin.plugin_dir, 'data',
                                'Borelog_Request_SOAP.xml')
 
@@ -97,23 +126,29 @@ class TIBorelogRequest:
 
         root = ET.fromstring(xml_base)
 
+        #
         for key, val in self.plugin.getAuthorisationInfo().items():
-            print(key, val)
             elem = root.find('.//c:{}'.format(key), ns)
             elem.text = str(val)
 
         for key, val in self.borelogParameters.items():
             elem = root.find('.//b:{}'.format(key), ns)
-            elem.text = str(val)
+            elem.text = val
 
         assert len(self.boreholes) > 0, 'no boreholes selected'
 
-        # TO-DO: adding multiple boreholes
-        for key, val in self.boreholes[0].items():
-            elem = root.find('.//b:{}'.format(key), ns)
-            elem.text = str(val)
+        # append new element for each borehole
+        elem_boreholes = root.find('.//b:Boreholes', ns)
+        for borehole_dict in self.boreholes:
+            b = ET.SubElement(elem_boreholes, "{" + ns['b'] + "}Borehole")
+            BoreHoleID = ET.SubElement(b, "{" + ns['b'] + "}BoreHoleID")
+            ProjectID = ET.SubElement(b, "{" + ns['b'] + "}ProjectID")
+            BoreHoleID.text = borehole_dict['BoreHoleID']
+            ProjectID.text = borehole_dict['ProjectID']
 
-        self.xml = ET.tostring(root, encoding='unicode')
+        self.xml = ET.tostring(root)
+
+        print(self.xml)
 
     @loadingbar
     def request(self):
@@ -124,24 +159,27 @@ class TIBorelogRequest:
         url = 'https://web.terraindex.com/DataWS/ITWBoreprofileService_V1_0.svc?singleWsdl'
 
         headers = {'content-type': 'application/soap+xml'}
-        
-        print(self.xml) 
 
         response = requests.post(url=url, data=self.xml, headers=headers)
-        image = None
+        # image = None
 
-        if response.status_code is requests.codes.ok:
-            content = response.content
-            root_content = ET.fromstring(content)
+        # if response.status_code is requests.codes.ok:
+        #     content = response.content
+        #     root_content = ET.fromstring(content)
 
-            bytes64 = root_content.find('.//b:Content', ns).text
-            image = BoreHoleImage(bytes64=bytes64, **self.boreholes[0])
+        #     bytes64 = root_content.find('.//b:Content', ns).text
 
-        return response, image
+        #     image = BoreHoleImage(bytes64=bytes64, **self.boreholes[0])
+
+        print(response)
+        print(response.content)
+
+        return response
 
 
 class BoreHoleImage:
     """Simple class to keep the image together with the boreholeID and projectID."""
+
     def __init__(self,  BoreHoleID, ProjectID, bytes64=None):
         self.id = BoreHoleID
         self.projectID = ProjectID

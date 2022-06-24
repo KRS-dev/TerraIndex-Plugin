@@ -50,17 +50,16 @@ class TISelectionTool(QgsMapToolIdentify):
 
         # do something when a single point is clicked
         if self.startPoint.compare(self.endPoint):
-            found_features = self.identify(event.x(), event.y(),
-                                        self.TopDownStopAtFirst,
-                                        self.VectorLayer)
+            found_features = self.identify(x = event.x(), y= event.y(),
+                                        layerList=[self.plugin.TILayer], 
+                                        mode=self.TopDownStopAtFirst)
 
             if len(found_features) > 0:
                 layer = found_features[0].mLayer
                 feature = found_features[0].mFeature
                 self.unsetSelectedFeatures()
-                layer.select(feature.id())
-                self.setSelectedFeature(feature)
-                self.addAnnotation(feature, layer) 
+                self.setSelectedFeatures([feature])
+                #self.addAnnotation(feature, layer) 
 
                 self.plugin.getBorelogImage(feature)
             else:
@@ -69,7 +68,7 @@ class TISelectionTool(QgsMapToolIdentify):
         else:
             r = self.rectangle()
 
-            layer = self.iface.activeLayer() 
+            layer = self.plugin.TILayer
 
 
             self.unsetSelectedFeatures()
@@ -77,9 +76,8 @@ class TISelectionTool(QgsMapToolIdentify):
             if r is not None:
                 #builds bbRect and select from layer, adding selection
                 bbRect = self.canvas().mapSettings().mapToLayerCoordinates(layer, r)
-                features = layer.getFeatures(bbRect)]
-                layer.selectByIds([f.id() for f in features])
-                self.setSelectedFeature(features)
+                features = layer.getFeatures(bbRect)
+                self.setSelectedFeatures([f for f in features])
             
             self.rubberband.hide()
             
@@ -110,18 +108,14 @@ class TISelectionTool(QgsMapToolIdentify):
             return None
         return QgsRectangle(self.startPoint, self.endPoint)
 
-    def setSelectedFeature(self, features):
-        self.selected_features = features
+    def setSelectedFeatures(self, features):
+        self.plugin.TILayer.selectByIds([f.id() for f in features])
         
-
     def unsetSelectedFeatures(self):
-        for layer in self.canvas().layers():
-                if layer.type() == layer.VectorLayer:
-                    layer.removeSelection()
-        self.selected_features = None
+        self.plugin.TILayer.removeSelection()
 
     def getSelectedFeature(self):
-        return self.selected_features
+        return self.plugin.TILayer.selectedFeatures()
 
     def addAnnotation(self, feature, layer):
 
