@@ -54,6 +54,9 @@
        <iconset>
         <normaloff>../../../../../../../../../Downloads/reload2.gif</normaloff>../../../../../../../../../Downloads/reload2.gif</iconset>
       </property>
+      <property name="checkable">
+       <bool>false</bool>
+      </property>
      </widget>
     </item>
    </layout>

@@ -25,7 +25,7 @@ class TerraIndexLoginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.password.setText(str(password))
         self.licensenumber.setText(str(licensenumber))
         self.applicationcode.setText(str(applicationcode))
-        self.message.setText(str(message))
+        self.message.setText(message)
 
         
     

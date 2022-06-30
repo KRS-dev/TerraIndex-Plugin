@@ -169,7 +169,7 @@ class TerraIndex:
         self.applicationcode = None
         self.errormessage = None
 
-        self.layoutsDict = None
+        self.layoutsDict = {}
 
 
         self.pluginIsActive = False
@@ -433,34 +433,20 @@ class TerraIndex:
             webbrowser.open(filename)
 
     @login
-    def getLayoutNames(self):
-        self.layoutsDict = layoutNamesRequest(self, type=2)
+    def updateLayoutNames(self):
+        self.layoutsDict = layoutNamesRequest(self)
         for key, val in self.layoutsDict.items():
             ## adds the names as text to the combobox and layoutid as data
-
             self.dockwidget.CB_layout.addItem(val['TemplateName'], userData=key)
     
     @login
     def getLayout(self, id):
-        
-        temp = layoutRequest(self, TemplateID=id)
-
-        print('getLayout:', temp)
-        return temp
-
-    def updateLayouts(self):
-        if self.layoutsDict == None:
-            self.getLayoutNames()
-
-
+        return layoutRequest(self, TemplateID=id)
     
     def downloadPDF(self):
-        
         features = self.TILayer.selectedFeatures()
         if len(features) > 0 :
             self.getBorelogsPDF(features)            
-
-
 
     def run(self):
         """Run method that loads and starts the plugin"""
@@ -481,13 +467,13 @@ class TerraIndex:
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
             self.dockwidget.PB_boreprofile.clicked.connect(self.setMapTool)
             self.dockwidget.PB_downloadpdf.clicked.connect(self.downloadPDF)
-            self.dockwidget.PB_updateLayouts.clicked.connect(self.updateLayouts)
+            self.dockwidget.PB_updateLayouts.pressed.connect(self.updateLayoutNames)
 
             # TODO: make querying layouts more inituitive
             # self.dockwidget.CB_layout.activated.connect(self.updateLayouts)
             # Load the layouts
-            if self.layoutsDict == None:
-                self.updateLayouts()
+            if self.layoutsDict == {}:
+                self.updateLayoutNames()
 
 
             # initialize TISelectionTool

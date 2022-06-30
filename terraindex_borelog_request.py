@@ -102,19 +102,21 @@ class TIBorelogRequest:
         }
 
         # Load in the layout file
-        # TO-DO: Selection of ini files
-        # with open(os.path.join(self.plugin.plugin_dir, 'data', r'depots 4 blad.txt'), encoding='utf8') as f:
-        #     ini = f.read()#.replace('\n', '')
-        #     self.borelogParameters['Layout'] = ini
+        if self.plugin.layoutsDict == {} or not isinstance(self.plugin.layoutsDict, dict):        
+            with open(os.path.join(self.plugin.plugin_dir, 'data', r'depots 4 blad.txt'), encoding='utf8') as f:
+                ini = f.read()
+                self.borelogParameters['Layout'] = ini
+            
+            self.borelogParameters['LayoutName'] = 'depots 4 blad'
+        else:
+            layoutID = self.plugin.dockwidget.CB_layout.currentData()
+            layout = self.plugin.layoutsDict[layoutID]
 
-        layoutID = self.plugin.dockwidget.CB_layout.currentData()
-        layout = self.plugin.layoutsDict[layoutID]
+            self.borelogParameters['Layout'] = self.plugin.getLayout(layoutID)
+            self.borelogParameters['LayoutName'] = layout['TemplateName']
 
-        self.borelogParameters['Layout'] = self.plugin.getLayout(layoutID)
-        self.borelogParameters['LayoutName'] = layout['TemplateName']
-
+        
         self.boreholes = []
-
         self.xml = None
 
     def addBorehole(self, BoreHoleID: int, ProjectID: int):
@@ -160,7 +162,7 @@ class TIBorelogRequest:
 
         self.xml = ET.tostring(root)
 
-        print(self.xml)
+        # print(self.xml)
 
     @loadingbar
     def request(self):
@@ -187,8 +189,8 @@ class TIBorelogRequest:
 
         #     image = BoreHoleImage(bytes64=bytes64, **self.boreholes[0])
 
-        print(response)
-        print(response.content)
+        # print(response)
+        # print(response.content)
 
         return response
 
