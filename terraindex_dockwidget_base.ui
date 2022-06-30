@@ -15,25 +15,46 @@
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="3" column="0">
+    <item row="7" column="0" colspan="2">
      <widget class="QGraphicsView" name="graphicsView"/>
     </item>
-    <item row="0" column="0">
+    <item row="1" column="0" colspan="2">
+     <widget class="QPushButton" name="PB_downloadpdf">
+      <property name="text">
+       <string>Download Multiple Boreprofiles</string>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="0">
+     <widget class="QComboBox" name="CB_layout">
+      <property name="currentText">
+       <string/>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="0" colspan="2">
      <widget class="QPushButton" name="PB_boreprofile">
       <property name="text">
        <string>Check Boreprofile</string>
       </property>
      </widget>
     </item>
-    <item row="1" column="0">
-     <widget class="QPushButton" name="PB_downloadpdf">
+    <item row="5" column="1">
+     <widget class="QPushButton" name="PB_updateLayouts">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="text">
-       <string>PushButton</string>
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>../../../../../../../../../Downloads/reload2.gif</normaloff>../../../../../../../../../Downloads/reload2.gif</iconset>
       </property>
      </widget>
-    </item>
-    <item row="2" column="0">
-     <widget class="QComboBox" name="CB_layout"/>
     </item>
    </layout>
   </widget>

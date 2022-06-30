@@ -1,3 +1,4 @@
+from re import template
 import requests
 import xml.etree.ElementTree as ET
 import os
@@ -17,25 +18,69 @@ ns_res = {
     'xsi':"http://www.w3.org/2001/XMLSchema-instance"
 }
 
-def layoutsRequest(TIPlugin, LayoutType = 2):
+def layoutRequest(TIPlugin, TemplateID):
+
+    xmlfile = os.path.join(TIPlugin.plugin_dir, 'data',
+                               'GetFieldTemplates.xml')
+    tree = ET.parse(xmlfile)
+    root = tree.getroot()
+
+    for key, val in TIPlugin.getAuthorisationInfo().items():
+        elem = root.find('.//itw1:{}'.format(key), ns_req)
+        elem.text = val
+
+
+    templateID = root.find('.//itw:TemplateID', ns_req)
+    templateID.text = TemplateID
+
+    xml = ET.tostring(root, encoding='unicode')
+
+
+    url = 'https://web.terraindex.com/LibraryWS/ITWFieldTemplateService_V1_0.svc'
+
+
+    token = TIPlugin.token
+
+    headers = {
+        'content-type': 'application/soap+xml',
+        'Authorization' : 'Bearer {}'.format(token) 
+    }
+
+
+    r = requests.post(url=url, data=xml, headers=headers)
+    r.raise_for_status()
+
+    content = r.content ### XML file in the form of a string
+    root_content = ET.fromstring(content) # Read in the xml
+
+    template = root_content.find('.//ns3:FieldTemplate', ns_res) # Find the first FieldTemplate in response
+
+    templateFile = template.find('ns3:TemplateFile', ns_res)
+    
+    layoutText = templateFile.text
+
+    return layoutText
+
+
+def layoutNamesRequest(TIPlugin, type = 2):
     """_summary_
 
     Parameters
     ----------
     TIPlugin : Terraindex
         Reference to the main plugin class
-    LayoutType : int, optional
-        Integer specifying layouttype, by default 2 for borelog type
+    type : int, optional
+        Integer specifying TemplateType, by default 2 for borelog type
 
     Returns
     -------
     dict
-        Dictionary of different TerraIndex layouts with layoutType
+        Dictionary of different TerraIndex layouts with TemplateType type
     """    
 
 
     xmlfile = os.path.join(TIPlugin.plugin_dir, 'data',
-                               'GetFieldTemplates.xml')
+                               'GetTemplateNames.xml')
     tree = ET.parse(xmlfile)
     root = tree.getroot()
 
@@ -74,16 +119,15 @@ def layoutsRequest(TIPlugin, LayoutType = 2):
         TemplateType = template.find('.//ns3:TemplateType', ns_res)
 
         
-        if int(TemplateType.text) == LayoutType or LayoutType is None:
+        if int(TemplateType.text) == type or type is None:
             TemplateID = template.find('.//ns3:TemplateID', ns_res)
             TemplateName = template.find('.//ns3:TemplateName', ns_res)
-            TemplateFile = template.find('.//ns3:TemplateFile', ns_res)
 
             templateDict[TemplateID.text] = {
                 'TemplateName': TemplateName.text,
-                'TemplateFile': TemplateFile.text,
                 'TemplateType': TemplateType.text
             }
+
 
     return templateDict
 

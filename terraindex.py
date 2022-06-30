@@ -34,7 +34,7 @@ from .terraindex_dockwidget import TerraIndexDockWidget
 from .terraindex_login import TerraIndexLoginDialog
 from .terraindex_borelog_request import TIBorelogRequest
 from .terraindex_selection_tool import TISelectionTool
-from .terraindex_layouts_request import layoutsRequest
+from .terraindex_layouts_request import layoutNamesRequest, layoutRequest
 
 import os.path
 import functools
@@ -68,11 +68,7 @@ def login(func):
         def credentialPull(self, dialog, func):
             success, results, username, licensenumber, applicationcode = dialog.getToken()
 
-
             if success is 1: ## clicked ok
-
-
-
 
                 if results['ResultCode'] is 0:
                     
@@ -86,7 +82,7 @@ def login(func):
 
                     self.authorisationBool = True
                     # evaluate the actual function
-                    func(self, *args, **kwargs)
+                    return func(self, *args, **kwargs)
                 else:
                     ## connection failed
 
@@ -116,7 +112,7 @@ def login(func):
         if self.token is None or time.time() - self.session_start_t > 3580:
             setupCredentialsDialog(self)
         else:
-            func(self, *args, **kwargs)
+            return func(self, *args, **kwargs)
 
 
     return wrapper
@@ -437,12 +433,24 @@ class TerraIndex:
             webbrowser.open(filename)
 
     @login
-    def getLayouts(self):
-        self.layoutsDict = layoutsRequest(self, 1)
+    def getLayoutNames(self):
+        self.layoutsDict = layoutNamesRequest(self, type=2)
         for key, val in self.layoutsDict.items():
             ## adds the names as text to the combobox and layoutid as data
 
             self.dockwidget.CB_layout.addItem(val['TemplateName'], userData=key)
+    
+    @login
+    def getLayout(self, id):
+        
+        temp = layoutRequest(self, TemplateID=id)
+
+        print('getLayout:', temp)
+        return temp
+
+    def updateLayouts(self):
+        if self.layoutsDict == None:
+            self.getLayoutNames()
 
 
     
@@ -473,10 +481,13 @@ class TerraIndex:
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
             self.dockwidget.PB_boreprofile.clicked.connect(self.setMapTool)
             self.dockwidget.PB_downloadpdf.clicked.connect(self.downloadPDF)
+            self.dockwidget.PB_updateLayouts.clicked.connect(self.updateLayouts)
 
+            # TODO: make querying layouts more inituitive
+            # self.dockwidget.CB_layout.activated.connect(self.updateLayouts)
             # Load the layouts
             if self.layoutsDict == None:
-                self.getLayouts()
+                self.updateLayouts()
 
 
             # initialize TISelectionTool

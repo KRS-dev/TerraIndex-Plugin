@@ -110,7 +110,7 @@ class TIBorelogRequest:
         layoutID = self.plugin.dockwidget.CB_layout.currentData()
         layout = self.plugin.layoutsDict[layoutID]
 
-        self.borelogParameters['Layout'] = layout['TemplateFile']
+        self.borelogParameters['Layout'] = self.plugin.getLayout(layoutID)
         self.borelogParameters['LayoutName'] = layout['TemplateName']
 
         self.boreholes = []
