@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>TerraIndex</string>
+   <string>TerraIndex Tool</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
@@ -21,7 +21,7 @@
     <item row="1" column="0" colspan="2">
      <widget class="QPushButton" name="PB_downloadpdf">
       <property name="text">
-       <string>Download Multiple Boreprofiles</string>
+       <string>Export Selected Boreprofiles</string>
       </property>
      </widget>
     </item>
@@ -35,7 +35,11 @@
     <item row="0" column="0" colspan="2">
      <widget class="QPushButton" name="PB_boreprofile">
       <property name="text">
-       <string>Check Boreprofile</string>
+       <string>Boreprofile</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>icon/mActionIdentify.png</normaloff>icon/mActionIdentify.png</iconset>
       </property>
      </widget>
     </item>
@@ -52,10 +56,13 @@
       </property>
       <property name="icon">
        <iconset>
-        <normaloff>../../../../../../../../../Downloads/reload2.gif</normaloff>../../../../../../../../../Downloads/reload2.gif</iconset>
+        <normaloff>icon/reload.gif</normaloff>icon/reload.gif</iconset>
       </property>
       <property name="checkable">
        <bool>false</bool>
+      </property>
+      <property name="autoRepeat">
+       <bool>true</bool>
       </property>
      </widget>
     </item>

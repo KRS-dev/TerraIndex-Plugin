@@ -290,12 +290,12 @@ class TerraIndex:
 
 
             if src.hasParam('url') and src.hasParam('typename'):
-
                 if src.param('url') == 'https://gwr.geoserver.terraindex.com/geoserver/ti-workspace/ows' and src.param('typename') == 'ti-workspace:AllProjects_MeasurementPoints_pnt':
                     TILayer = layer
         
         if TILayer is None:
             TILayer = QgsVectorLayer(uri,'AllProjects_MeasurementPoints_pnt', 'WFS')
+            TILayer.loadNamedStyle(os.path.join(self.plugin_dir, 'data', 'TerraIndexLayerStyle.qml'))
             QgsProject.instance().addMapLayer(TILayer)
 
         self.TILayer = TILayer
@@ -396,7 +396,7 @@ class TerraIndex:
 
         else:
             # show warning maybe
-            pass
+            self.iface.messageBar().pushMessage('Error', 'Kon geen ProjectID of MeasurementPointID in de features vinden. Heb je wel punten van de TerraIndex Laag geselecteerd?', level=Qgis.Warning)
     
     @login
     def getBorelogsPDF(self, features):
