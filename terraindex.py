@@ -21,6 +21,7 @@
  *                                                                         *
  ***************************************************************************/
 """
+from operator import attrgetter
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon, QPixmap
 from qgis.PyQt.QtWidgets import QAction, QGraphicsScene, QGraphicsPixmapItem, QProgressBar, QFileDialog
@@ -445,8 +446,26 @@ class TerraIndex:
     
     def downloadPDF(self):
         features = self.TILayer.selectedFeatures()
+
         if len(features) > 0 :
-            self.getBorelogsPDF(features)            
+
+            features2 = self.sortFeatures(features)
+            self.getBorelogsPDF(features2) 
+
+    def sortFeatures(self, features):
+
+        def get_projectID(f):
+            return f['ProjectID']
+
+        def get_pointID(f):
+            return f['MeasurementPointID'] 
+
+        def sortProjectPoint(f):
+            return (get_projectID(f), get_pointID(f)) 
+
+        features2 = sorted(features, key=sortProjectPoint) 
+
+        return features2
 
     def run(self):
         """Run method that loads and starts the plugin"""
