@@ -33,9 +33,9 @@ from .resources import *
 # Import the code for the DockWidget
 from .terraindex_dockwidget import TerraIndexDockWidget
 from .terraindex_login import TerraIndexLoginDialog
-from .terraindex_borelog_request import TIBorelogRequest
+from .terraindex_borelog_request import BorelogRequest
 from .terraindex_selection_tool import TISelectionTool
-from .terraindex_layouts_request import layoutNamesRequest, layoutRequest
+from .terraindex_layouts_request import layoutTemplatesRequest, layoutDataRequest
 
 import os.path
 import functools
@@ -371,7 +371,7 @@ class TerraIndex:
             #print(projectID)
             #print(measurementPointID)
 
-            request = TIBorelogRequest(self, )
+            request = BorelogRequest(self, )
 
             request.addBorehole(measurementPointID, projectID)
 
@@ -408,7 +408,7 @@ class TerraIndex:
                                 'BoreHoleID': feature['MeasurementPointID']})
         
 
-        request = TIBorelogRequest(self, DrawMode='MultiPage', OutputType='PDF')
+        request = BorelogRequest(self, DrawMode='MultiPage', OutputType='PDF')
 
         for d in boreholeid_list:
             request.addBorehole(**d)
@@ -421,7 +421,7 @@ class TerraIndex:
             
             self.iface.messageBar().pushMessage("Error", response.reason, level=Qgis.Critical)
         else:
-            print('response check true')
+            # print('response check true')
             xml_content = ET.fromstring(response.content)
 
             bytes64 = xml_content.find('.//b:Content', ns).text
@@ -435,14 +435,14 @@ class TerraIndex:
 
     @login
     def updateLayoutNames(self):
-        self.layoutsDict = layoutNamesRequest(self)
+        self.layoutsDict = layoutTemplatesRequest(self)
         for key, val in self.layoutsDict.items():
             ## adds the names as text to the combobox and layoutid as data
             self.dockwidget.CB_layout.addItem(val['TemplateName'], userData=key)
     
     @login
     def getLayout(self, id):
-        return layoutRequest(self, TemplateID=id)
+        return layoutDataRequest(self, TemplateID=id)
     
     def downloadPDF(self):
         features = self.TILayer.selectedFeatures()

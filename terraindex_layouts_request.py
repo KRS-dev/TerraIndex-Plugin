@@ -18,7 +18,7 @@ ns_res = {
     'xsi':"http://www.w3.org/2001/XMLSchema-instance"
 }
 
-def layoutRequest(TIPlugin, TemplateID):
+def layoutDataRequest(TIPlugin, TemplateID):
 
     xmlfile = os.path.join(TIPlugin.plugin_dir, 'data',
                                'GetFieldTemplates.xml')
@@ -62,7 +62,7 @@ def layoutRequest(TIPlugin, TemplateID):
     return layoutText
 
 
-def layoutNamesRequest(TIPlugin, type = 2):
+def layoutTemplatesRequest(TIPlugin, type = 2):
     """_summary_
 
     Parameters

@@ -1,6 +1,8 @@
+import gzip
 import requests
 import os
 import base64
+import json
 import xml.etree.ElementTree as ET
 import functools
 
@@ -55,7 +57,7 @@ def loadingbar(func):
 #         Response object for response codes
 #     """
 
-#     request = TIBorelogRequest(plugin)
+#     request = BorelogRequest(plugin)
 #     request.addBorehole(48, 11437)
 
 #     response = request.request()
@@ -63,7 +65,7 @@ def loadingbar(func):
 #     return response
 
 
-class TIBorelogRequest:
+class BorelogRequest:
     """Request class for the SOAP requests to the servers.
 
     Returns
@@ -170,7 +172,7 @@ class TIBorelogRequest:
         if self.xml is None:
             self.setXMLparameters()
 
-        url = 'https://web.terraindex.com/DataWS/ITWBoreprofileService_V1_0.svc?singleWsdl'
+        url = 'https://web.terraindex.com/DataWSExternals/ITWBoreprofileService_V1_0.svc?singleWsdl'
 
         token = self.plugin.token
 
@@ -195,11 +197,74 @@ class TIBorelogRequest:
         return response
 
 
+class BoreholeDataRequest:
+    
+
+    def __init__(self, plugin):
+
+
+        self.plugin = plugin
+        self.iface = plugin.iface
+
+        self.boreholes = []
+    
+    def addBorehole(self, BoreHoleID: int, ProjectID: int):
+        self.boreholes.append(
+            {'BoreHoleID': str(BoreHoleID), 'ProjectID': str(ProjectID)})
+    
+
+    @loadingbar
+    def request(self):
+
+        if self.boreholes:
+
+            data = []
+            for borehole in self.boreholes:
+                url = 'https://web.terraindex.com/DataWSExternals/ITWViewRestService_V1_0/GetQuerryResponse'
+
+                headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization' : 'Bearer {}'.format(self.plugin.token),
+                }
+
+                authorisation = self.plugin.getAuthorisationInfo()
+
+                authorisation['Language'] = "nl"
+
+                param = {"LANGUAGECODE": "nld",
+                    "PROJECTID": str(borehole['ProjectID']),
+                    "IDBOORPUNT": str(borehole['BoreHoleID'])}
+
+                body = {
+                    "Authorisation": authorisation,
+                    "LanguageCode": "nld",
+                    "WebserviceVersion": "1.0",
+                    "UseZipStream": True,
+                    "DataType": "JSON",
+                    "Param": json.dumps(param),
+                    "ViewName":"QGIS.Borehole.Layers"
+                }
+
+
+                response = requests.post(url = url, headers=headers, data=json.dumps(body))
+
+                content = json.loads(response.content)['Content']
+
+                data.extend(json.loads(gzip.decompress(base64.b64decode(content)))['Table'])
+        
+            return data
+    
+
+
+
+
+
+
 class BoreHoleImage:
     """Simple class to keep the image together with the boreholeID and projectID."""
 
     def __init__(self,  BoreHoleID, ProjectID, bytes64=None):
-        self.id = BoreHoleID
+        self.id = BoreHoleID    
         self.projectID = ProjectID
         self.bytes = base64.b64decode(bytes64)
 
