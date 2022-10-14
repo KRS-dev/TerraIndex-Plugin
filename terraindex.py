@@ -380,6 +380,7 @@ class TerraIndex:
             if response.status_code is not requests.codes.ok:
                 
                 self.iface.messageBar().pushMessage("Error", response.reason, level=Qgis.Critical)
+                response.raise_for_status()
             else:
                 xml_content = ET.fromstring(response.content)
 
@@ -420,6 +421,7 @@ class TerraIndex:
         if response.status_code is not requests.codes.ok:
             
             self.iface.messageBar().pushMessage("Error", response.reason, level=Qgis.Critical)
+            response.raise_for_status()
         else:
             # print('response check true')
             xml_content = ET.fromstring(response.content)
