@@ -33,7 +33,7 @@ from .resources import *
 # Import the code for the DockWidget
 from .terraindex_dockwidget import TerraIndexDockWidget
 from .terraindex_login import TerraIndexLoginDialog
-from .terraindex_borelog_request import BorelogRequest
+from .terraindex_borelog_request import BoreholeDataRequest, BorelogRequest
 from .terraindex_selection_tool import TISelectionTool
 from .terraindex_layouts_request import layoutTemplatesRequest, layoutDataRequest
 
@@ -46,6 +46,7 @@ import requests, base64
 import xml.etree.ElementTree as ET
 from io import BytesIO
 import webbrowser
+import pandas as pd
 
 
 ## Namespaces for the SOAP request/response
@@ -434,6 +435,51 @@ class TerraIndex:
                 f.write(bytes)
 
             webbrowser.open(filename)
+
+    @login
+    def getBoreholeData(self, features):
+
+        boreholeid_list = []
+        for feature in features:
+            boreholeid_list.append({'ProjectID': feature['ProjectID'],
+                                'BoreHoleID': feature['MeasurementPointID']})
+        
+        request = BoreholeDataRequest(self)
+
+        for d in boreholeid_list:
+            request.addBorehole(**d)
+        
+        response, data = request.request()
+
+        if response.status_code is not requests.codes.ok:
+            self.iface.messageBar().pushMessage("Error", response.reason, level=Qgis.Critical)
+            response.raise_for_status()
+        
+        return data
+    
+    @login
+    def downloadBoreholeData(self):
+
+
+        filename, selectedFilter = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save Borehole Data:"), 'borelogs_data', self.tr('data (*.csv, *.xlsx)') )
+
+        features = self.TILayer.selectedFeatures()
+
+        if len(features) > 0:
+            features2 = self.sortFeatures(features)
+            data = self.getBoreholeData(features2)
+
+            df = pd.DataFrame(data)
+
+            
+            if selectedFilter == '.csv':
+                df.to_csv(filename, sep=';')
+            elif selectedFilter == '.xlsx':
+                df.to_excel(filename)
+
+
+            
+
 
     @login
     def updateLayoutNames(self):

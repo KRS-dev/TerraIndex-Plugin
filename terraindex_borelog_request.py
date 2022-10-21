@@ -247,12 +247,14 @@ class BoreholeDataRequest:
 
 
                 response = requests.post(url = url, headers=headers, data=json.dumps(body))
+                
+                if response.status_code is not requests.codes.ok:
+                    content = json.loads(response.content)['Content']
 
-                content = json.loads(response.content)['Content']
-
-                data.extend(json.loads(gzip.decompress(base64.b64decode(content)))['Table'])
+                    data.extend(json.loads(gzip.decompress(base64.b64decode(content)))['Table'])
+                
         
-            return data
+            return response, data
     
 
 

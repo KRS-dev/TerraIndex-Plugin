@@ -23,8 +23,10 @@ class TerraIndexLoginDialog(QtWidgets.QDialog, FORM_CLASS):
 
         self.username.setText(str(username))
         self.password.setText(str(password))
-        self.licensenumber.setText(str(licensenumber))
-        self.applicationcode.setText(str(applicationcode))
+        self.licensenumber = str(licensenumber)
+        self.applicationcode = str(applicationcode)
+        # self.licensenumber.setText(str(licensenumber))
+        # self.applicationcode.setText(str(applicationcode))
         self.message.setText(message)
 
         
@@ -38,8 +40,8 @@ class TerraIndexLoginDialog(QtWidgets.QDialog, FORM_CLASS):
             body = {
                 'Username': self.username.text(),
                 'Password': self.password.text(),
-                'Licensenumber': self.licensenumber.text(),
-                'ApplicationCode': self.applicationcode.text()
+                'Licensenumber': self.licensenumber,
+                'ApplicationCode': self.applicationcode
             }
 
             headers = {
@@ -51,4 +53,4 @@ class TerraIndexLoginDialog(QtWidgets.QDialog, FORM_CLASS):
             results = r.json()
 
         # self.result() = 1 if Ok clicked, 0 if cancelled or closed
-        return self.result(), results, self.username.text(), self.licensenumber.text(), self.applicationcode.text()
+        return self.result(), results, self.username.text(), self.licensenumber, self.applicationcode
