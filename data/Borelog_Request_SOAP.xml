@@ -6,7 +6,7 @@
         <a:ReplyTo>
             <a:Address>http://www.w3.org/2005/08/addressing/anonymous</a:Address>
         </a:ReplyTo>
-        <a:To s:mustUnderstand="1">https://test.terraindex.com/DataWS/ITWBoreprofileService_V1_0.svc</a:To>
+        <a:To s:mustUnderstand="1">https://test.terraindex.com/DataWSExternals/ITWBoreprofileService_V1_0.svc</a:To>
     </s:Header>
     <s:Body>
         <GetBoreprofile_V1_0 xmlns="https://wsterraindex.terraindex.com/ITWorks.TerraIndex/">

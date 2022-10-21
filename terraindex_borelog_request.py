@@ -181,18 +181,6 @@ class BorelogRequest:
         }
 
         response = requests.post(url=url, data=self.xml, headers=headers)
-        # image = None
-
-        # if response.status_code is requests.codes.ok:
-        #     content = response.content
-        #     root_content = ET.fromstring(content)
-
-        #     bytes64 = root_content.find('.//b:Content', ns).text
-
-        #     image = BoreHoleImage(bytes64=bytes64, **self.boreholes[0])
-
-        # print(response)
-        # print(response.content)
 
         return response
 
