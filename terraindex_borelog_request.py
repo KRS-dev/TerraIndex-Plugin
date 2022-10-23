@@ -203,21 +203,18 @@ class BoreholeDataRequest:
 
     @loadingbar
     def request(self):
-
         if self.boreholes:
+            url = 'https://web.terraindex.com/DataWSExternals/ITWViewRestService_V1_0/GetQuerryResponse'
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization' : 'Bearer {}'.format(self.plugin.token),
+            }
+            authorisation = self.plugin.getAuthorisationInfo()
+            authorisation['Language'] = "nl"
 
             data = []
             for borehole in self.boreholes:
-                url = 'https://web.terraindex.com/DataWSExternals/ITWViewRestService_V1_0/GetQuerryResponse'
-
-                headers = {
-                    'Content-Type': 'application/json',
-                    'Authorization' : 'Bearer {}'.format(self.plugin.token),
-                }
-
-                authorisation = self.plugin.getAuthorisationInfo()
-
-                authorisation['Language'] = "nl"
+                
 
                 param = {"LANGUAGECODE": "nld",
                     "PROJECTID": str(borehole['ProjectID']),
@@ -233,14 +230,15 @@ class BoreholeDataRequest:
                     "ViewName":"QGIS.Borehole.Layers"
                 }
 
-
                 response = requests.post(url = url, headers=headers, data=json.dumps(body))
                 
                 if response.status_code is not requests.codes.ok:
+                    response.raise_for_status()
+
+                else:
                     content = json.loads(response.content)['Content']
 
                     data.extend(json.loads(gzip.decompress(base64.b64decode(content)))['Table'])
-                
         
             return response, data
     

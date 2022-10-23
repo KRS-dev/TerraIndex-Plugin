@@ -48,6 +48,7 @@ from io import BytesIO
 import webbrowser
 import pandas as pd
 
+import pprint
 
 ## Namespaces for the SOAP request/response
 ns = {
@@ -66,13 +67,15 @@ def login(func):
 
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
+        
+        print(args, kwargs)
 
         def credentialPull(self, dialog, func):
             success, results, username, licensenumber, applicationcode = dialog.getToken()
 
             if success is 1: ## clicked ok
 
-                if results['ResultCode'] is 0:
+                if results['ResultCode'] == 0:
                     
                     self.session_start_t = time.time()
                     self.token = results['Result']
@@ -84,6 +87,7 @@ def login(func):
 
                     self.authorisationBool = True
                     # evaluate the actual function
+
                     return func(self, *args, **kwargs)
                 else:
                     ## connection failed
@@ -458,10 +462,10 @@ class TerraIndex:
         return data
     
     @login
-    def downloadBoreholeData(self):
+    def downloadBoreholeData(self, *args):
 
 
-        filename, selectedFilter = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save Borehole Data:"), 'borelogs_data', self.tr('data (*.csv, *.xlsx)') )
+        filename, selectedFilter = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save Borehole Data:"), 'borelogs_data', self.tr('data (*.csv *.xlsx)') )
 
         features = self.TILayer.selectedFeatures()
 
@@ -469,16 +473,16 @@ class TerraIndex:
             features2 = self.sortFeatures(features)
             data = self.getBoreholeData(features2)
 
+            pprint.pprint(data)
+
             df = pd.DataFrame(data)
+            print(df)
+            _, ext = os.path.splitext(filename)
 
-            
-            if selectedFilter == '.csv':
+            if ext == '.csv': 
                 df.to_csv(filename, sep=';')
-            elif selectedFilter == '.xlsx':
+            elif ext == '.xlsx':
                 df.to_excel(filename)
-
-
-            
 
 
     @login
@@ -535,6 +539,7 @@ class TerraIndex:
             self.dockwidget.PB_boreprofile.clicked.connect(self.setMapTool)
             self.dockwidget.PB_downloadpdf.clicked.connect(self.downloadPDF)
             self.dockwidget.PB_updateLayouts.pressed.connect(self.updateLayoutNames)
+            self.dockwidget.PB_downloaddata.clicked.connect(self.downloadBoreholeData)
 
             # TODO: make querying layouts more inituitive
             # self.dockwidget.CB_layout.activated.connect(self.updateLayouts)

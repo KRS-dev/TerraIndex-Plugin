@@ -15,23 +15,6 @@
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="7" column="0" colspan="2">
-     <widget class="QGraphicsView" name="graphicsView"/>
-    </item>
-    <item row="1" column="0" colspan="2">
-     <widget class="QPushButton" name="PB_downloadpdf">
-      <property name="text">
-       <string>Export Selected Boreprofiles</string>
-      </property>
-     </widget>
-    </item>
-    <item row="5" column="0">
-     <widget class="QComboBox" name="CB_layout">
-      <property name="currentText">
-       <string/>
-      </property>
-     </widget>
-    </item>
     <item row="0" column="0" colspan="2">
      <widget class="QPushButton" name="PB_boreprofile">
       <property name="text">
@@ -43,7 +26,20 @@
       </property>
      </widget>
     </item>
-    <item row="5" column="1">
+    <item row="6" column="0">
+     <widget class="QComboBox" name="CB_layout">
+      <property name="toolTip">
+       <string>Layout Templates</string>
+      </property>
+      <property name="whatsThis">
+       <string>Layout Templates</string>
+      </property>
+      <property name="currentText">
+       <string/>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="1">
      <widget class="QPushButton" name="PB_updateLayouts">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
@@ -65,6 +61,31 @@
        <bool>true</bool>
       </property>
      </widget>
+    </item>
+    <item row="8" column="0" colspan="2">
+     <widget class="QGraphicsView" name="graphicsView">
+      <property name="interactive">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0" colspan="2">
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QPushButton" name="PB_downloadpdf">
+        <property name="text">
+         <string>Export Selected Boreprofiles</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="PB_downloaddata">
+        <property name="text">
+         <string>Export Data</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>
