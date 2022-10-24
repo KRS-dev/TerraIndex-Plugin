@@ -15,18 +15,25 @@
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0" colspan="2">
-     <widget class="QPushButton" name="PB_boreprofile">
-      <property name="text">
-       <string>Boreprofile</string>
-      </property>
-      <property name="icon">
-       <iconset>
-        <normaloff>icon/mActionIdentify.png</normaloff>icon/mActionIdentify.png</iconset>
-      </property>
-     </widget>
+    <item row="10" column="0" colspan="2">
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QPushButton" name="PB_downloadpdf">
+        <property name="text">
+         <string>Export Boreprofiles</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="PB_downloaddata">
+        <property name="text">
+         <string>Export Data</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
-    <item row="6" column="0">
+    <item row="15" column="0">
      <widget class="QComboBox" name="CB_layout">
       <property name="toolTip">
        <string>Layout Templates</string>
@@ -39,7 +46,7 @@
       </property>
      </widget>
     </item>
-    <item row="6" column="1">
+    <item row="15" column="1">
      <widget class="QPushButton" name="PB_updateLayouts">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
@@ -62,26 +69,36 @@
       </property>
      </widget>
     </item>
-    <item row="8" column="0" colspan="2">
+    <item row="17" column="0" colspan="2">
      <widget class="QGraphicsView" name="graphicsView">
       <property name="interactive">
        <bool>true</bool>
       </property>
      </widget>
     </item>
-    <item row="1" column="0" colspan="2">
-     <layout class="QHBoxLayout" name="horizontalLayout">
+    <item row="0" column="0" colspan="2">
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>10</number>
+      </property>
       <item>
-       <widget class="QPushButton" name="PB_downloadpdf">
+       <widget class="QPushButton" name="PB_boreprofile">
         <property name="text">
-         <string>Export Selected Boreprofiles</string>
+         <string>Boreprofile</string>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>icon/mActionIdentify.png</normaloff>icon/mActionIdentify.png</iconset>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="PB_downloaddata">
+       <widget class="QPushButton" name="PB_crosssection">
         <property name="text">
-         <string>Export Data</string>
+         <string>CrossSection</string>
         </property>
        </widget>
       </item>
