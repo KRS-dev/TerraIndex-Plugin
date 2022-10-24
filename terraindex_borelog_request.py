@@ -43,27 +43,6 @@ def loadingbar(func):
     return wrapper
 
 
-# def testconnection(plugin) -> requests.Response:
-#     """Test request for login parameters
-
-#     Parameters
-#     ----------
-#     plugin : TerraIndex
-#         plugin class reference for credentials
-
-#     Returns
-#     -------
-#     requests.Response
-#         Response object for response codes
-#     """
-
-#     request = BorelogRequest(plugin)
-#     request.addBorehole(48, 11437)
-
-#     response = request.request()
-
-#     return response
-
 
 class BorelogRequest:
     """Request class for the SOAP requests to the servers.
@@ -105,9 +84,13 @@ class BorelogRequest:
         self.boreholes = []
         self.xml = None
 
-    def addBorehole(self, BoreHoleID: int, ProjectID: int):
-        self.boreholes.append(
-            {'BoreHoleID': str(BoreHoleID), 'ProjectID': str(ProjectID)})
+    def addBorehole(self, BoreHoleID: int, ProjectID: int, **kwargs):
+        d = {'BoreHoleID': str(BoreHoleID), 'ProjectID': str(ProjectID)}
+
+        for key, val in kwargs:
+            d[key] = str(val)
+
+        self.boreholes.append(d)
 
     def checkLayoutTemplate(self):
         # Load in the layout file
@@ -124,6 +107,12 @@ class BorelogRequest:
             self.borelogParameters['Layout'] = self.plugin.getLayout(layoutID)
             self.borelogParameters['LayoutName'] = layout['TemplateName']
 
+        if self.borelogParameters['DrawKind'] == 'CrossSection':
+            layout = self.borelogParameters['Layout']
+            PageOrientation = layout.split('PageOrientation=')[1].split(r'\n')[0]
+            if not PageOrientation == 'poLandscape':
+                ### load other layout that is in landscape, give off warning
+
 
     def setXMLparameters(self):
 
@@ -136,7 +125,6 @@ class BorelogRequest:
 
         root = ET.fromstring(xml_base)
 
-        
         authorisationParameters ={
             'Username' : self.plugin.username,
             'ApplicationCode' : self.plugin.applicationcode,
@@ -157,10 +145,10 @@ class BorelogRequest:
         elem_boreholes = root.find('.//b:Boreholes', ns)
         for borehole_dict in self.boreholes:
             b = ET.SubElement(elem_boreholes, "{" + ns['b'] + "}Borehole")
-            BoreHoleID = ET.SubElement(b, "{" + ns['b'] + "}BoreHoleID")
-            ProjectID = ET.SubElement(b, "{" + ns['b'] + "}ProjectID")
-            BoreHoleID.text = borehole_dict['BoreHoleID']
-            ProjectID.text = borehole_dict['ProjectID']
+            for key, val in borehole_dict:
+                b = ET.SubElement(b, "{" + ns['b'] + "}" + key)
+                b.text = val
+
 
         self.xml = ET.tostring(root)
 
@@ -172,7 +160,6 @@ class BorelogRequest:
         if self.xml is None:
             self.setXMLparameters()
 
-
         token = self.plugin.token
 
         headers = {'content-type': 'application/soap+xml',
@@ -183,64 +170,12 @@ class BorelogRequest:
 
         return response
 
-class CrossSectionRequest(BorelogRequest):
-
-    def __init__(self, plugin):
-        super().__init__(plugin, **kwargs)
-
-        # Overwrite the standard input arguments
-        self.borelogParameters['DrawMode'] = kwargs.get('DrawMode', 'Multipage')
-        self.borelogParameters['OutputType'] = kwargs.get('OutputType', 'PDF')
-
-
-    def setXMLparameters(self):
-
-        # Open the xml request blueprint
-        xmlfile = os.path.join(self.plugin.plugin_dir, 'data',
-                               'Borelog_Request_SOAP.xml')
-
-        with open(xmlfile, 'r') as f:
-            xml_base = f.read()
-
-        root = ET.fromstring(xml_base)
-
-        
-        authorisationParameters ={
-            'Username' : self.plugin.username,
-            'ApplicationCode' : self.plugin.applicationcode,
-            'Licensenumber': self.plugin.licensenumber
-        }
-
-        for key, val in authorisationParameters.items():
-            elem = root.find('.//c:{}'.format(key), ns)
-            elem.text = str(val)
-
-        for key, val in self.borelogParameters.items():
-            elem = root.find('.//b:{}'.format(key), ns)
-            elem.text = val
-
-        assert len(self.boreholes) > 0, 'no boreholes selected'
-
-        # append new element for each borehole
-        elem_boreholes = root.find('.//b:Boreholes', ns)
-        for borehole_dict in self.boreholes:
-            b = ET.SubElement(elem_boreholes, "{" + ns['b'] + "}Borehole")
-            BoreHoleID = ET.SubElement(b, "{" + ns['b'] + "}BoreHoleID")
-            ProjectID = ET.SubElement(b, "{" + ns['b'] + "}ProjectID")
-            BoreHoleID.text = borehole_dict['BoreHoleID']
-            ProjectID.text = borehole_dict['ProjectID']
-
-        self.xml = ET.tostring(root)
-
-
 
 
 class BoreholeDataRequest:
     
 
     def __init__(self, plugin):
-
-
         self.plugin = plugin
         self.iface = plugin.iface
 

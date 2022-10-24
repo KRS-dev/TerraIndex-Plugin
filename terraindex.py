@@ -47,6 +47,7 @@ import xml.etree.ElementTree as ET
 from io import BytesIO
 import webbrowser
 import pandas as pd
+import numpy as np
 
 import pprint
 
@@ -177,6 +178,7 @@ class TerraIndex:
 
         self.layoutsDict = {}
 
+        self.crossSectionList = []
 
         self.pluginIsActive = False
 
@@ -419,8 +421,60 @@ class TerraIndex:
         for d in boreholeid_list:
             request.addBorehole(**d)
 
-        
         filename, _ = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save PDF:"), 'borelogs', self.tr('pdf (*.pdf)') )
+
+        response = request.request()
+        if response.status_code is not requests.codes.ok:
+            
+            self.iface.messageBar().pushMessage("Error", response.reason, level=Qgis.Critical)
+            response.raise_for_status()
+        else:
+            # print('response check true')
+            xml_content = ET.fromstring(response.content)
+
+            bytes64 = xml_content.find('.//b:Content', ns).text
+
+            bytes = base64.b64decode(bytes64)
+
+            with open(filename, 'wb') as f:
+                f.write(bytes)
+
+            webbrowser.open(filename)
+    
+    def normalizeCrossSectionDistances(self, min=10):
+        if self.crossSectionList is not None:
+            distances = [float(f[1]) for f in self.crossSectionList]
+            diff = np.diff(distances)
+            min_dist = np.min(diff)
+            factor = min/min_dist
+            distances2 = np.hstack([np.array([0]), np.cumsum(diff)*factor]) # start distances from 0
+
+            crossSectionList2 = []
+            for i, (f, d) in self.crossSectionList:
+                crossSectionList2.append([f, distances2[i]])
+
+            self.crossSectionList = crossSectionList2
+            return factor
+
+    @login
+    def getCrossSectionPDF(self):
+
+        scale = self.normalizeCrossSectionDistances()
+
+        boreholeid_list = []
+        for feature, distance in self.crossSectionList:
+            boreholeid_list.append({'ProjectID': feature['ProjectID'],
+                                'BoreHoleID': feature['MeasurementPointID'],
+                                'Distance': distance
+                                })
+        
+
+        request = BorelogRequest(self, DrawKind='CrossSection', DrawMode='MultiPage', OutputType='PDF')
+
+        for d in boreholeid_list:
+            request.addBorehole(**d)
+
+        filename, _ = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save PDF:"), 'CrossSection', self.tr('pdf (*.pdf)') )
 
         response = request.request()
         if response.status_code is not requests.codes.ok:
@@ -540,8 +594,8 @@ class TerraIndex:
             self.dockwidget.PB_downloadpdf.clicked.connect(self.downloadPDF)
             self.dockwidget.PB_updateLayouts.pressed.connect(self.updateLayoutNames)
             self.dockwidget.PB_downloaddata.clicked.connect(self.downloadBoreholeData)
+            self.dockwidget.PB_crosssection.clicked.connect(self.getCrossSectionPDF)
 
-            # TODO: make querying layouts more inituitive
             # self.dockwidget.CB_layout.activated.connect(self.updateLayouts)
             # Load the layouts
             if self.layoutsDict == {}:
@@ -550,6 +604,8 @@ class TerraIndex:
 
             # initialize TISelectionTool
             self.setMapTool()
+
+            # Import TerraIndex Measurement point layer
             self.initTILayer()
 
 

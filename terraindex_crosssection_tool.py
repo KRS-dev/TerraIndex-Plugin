@@ -1,5 +1,5 @@
-from qgis.gui import QgsMapTool
-from qgis.core import  QgsPointXY, QgsProject, QgsPointXY, QgsRectangle, QgsWkbTypes
+from qgis.gui import QgsMapTool, QgsRubberBand
+from qgis.core import  QgsPointXY, QgsProject, QgsPointXY, QgsRectangle, QgsWkbTypes, 
 
 from qgis.PyQt.QtGui import QTextDocument, Qt
 from qgis.PyQt.QtCore import QSizeF
@@ -7,8 +7,6 @@ from qgis.PyQt.QtCore import QSizeF
 from collections import OrderedDict
 
 import numpy as np
-
-
 
 
 class TICrosssectionTool(QgsMapTool):
@@ -50,19 +48,17 @@ class TICrosssectionTool(QgsMapTool):
 
                     if bbRect_map is not None:
                         layer = self.plugin.TILayer
-                        bbRect = self.canvas().mapSettings().mapToLayerCoordinates(layer, r)
+                        bbRect = self.canvas().mapSettings().mapToLayerCoordinates(layer, bbRect_map)
                         features = layer.getFeatures(bbRect)
-
-                        startpt_layer = self.canvas().mapSettings().mapToLayerCoordinates(layer, self.startPoint)
                         
                         proj_vec = self.getProjVec()
-
+                        selectedFeatures = []
                         for f in features:
-                            vec = f.geometry().asPoint() - startpt_layer
-                            self.distances[f.id()] = self.proj_to_line(vec, proj_vec)
-                            
+                            vec = self.canvas().mapSettings().layerToMapCoordinates(layer, f.geometry().asPoint()) - self.startPoint
 
-                        self.setSelectedFeatures([f for f in features])
+                            selectedFeatures.append((f,  self.projLength(vec, proj_vec)))
+                            
+                        self.setSelectedFeatures(selectedFeatures)
 
         
         elif event.button() == Qt.RightButton:
@@ -116,8 +112,8 @@ class TICrosssectionTool(QgsMapTool):
 
             a = thickness/2
 
-            point1 = QgsPointXY( startPoint.x() + a*vec_orth[0], startPoint.y() + a*vec_orth[1])
-            point2 = QgsPointXY( endPoint.x() - a*vec_orth[0], endPoint.y() - a*vec_orth[1])
+            point1 = QgsPointXY( self.startPoint.x() + a*vec_orth[0], self.startPoint.y() + a*vec_orth[1])
+            point2 = QgsPointXY( self.endPoint.x() - a*vec_orth[0], self.endPoint.y() - a*vec_orth[1])
             return QgsRectangle(point1, point2)
     
     def getProjVec(self):
@@ -127,7 +123,7 @@ class TICrosssectionTool(QgsMapTool):
             vec = self.endPoint - self.startPoint
             return vec.normalized()
 
-    def proj_to_line(self, vec1, vec2):
+    def projLength(self, vec1, vec2):
         '''Projects vector 1 onto the line of vector 2
 
         Args:
@@ -142,10 +138,12 @@ class TICrosssectionTool(QgsMapTool):
     
 
     def setSelectedFeatures(self, features):
-        self.plugin.TILayer.selectByIds([f.id() for f in features])
+        self.plugin.TILayer.selectByIds([f.key().id() for f in features])
+        self.plugin.crossSectionList = features
         
     def unsetSelectedFeatures(self):
         self.plugin.TILayer.removeSelection()
+        self.plugin.crossSectionList = []
 
     def getSelectedFeature(self):
         return self.plugin.TILayer.selectedFeatures()
