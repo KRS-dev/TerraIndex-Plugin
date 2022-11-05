@@ -35,6 +35,7 @@ from .terraindex_dockwidget import TerraIndexDockWidget
 from .terraindex_login import TerraIndexLoginDialog
 from .terraindex_borelog_request import BoreholeDataRequest, BorelogRequest
 from .terraindex_selection_tool import TISelectionTool
+from .terraindex_crosssection_tool import TICrossSectionTool
 from .terraindex_layouts_request import layoutTemplatesRequest, layoutDataRequest
 
 import os.path
@@ -163,9 +164,6 @@ class TerraIndex:
         # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'TerraIndex')
         self.toolbar.setObjectName(u'TerraIndex')
-
-        # print "** INITIALIZING TerraIndex"
-        self.map_tool = None
 
         self.TILayer = None
       
@@ -321,7 +319,7 @@ class TerraIndex:
 
         # reset maptool
         self.map_tool.removeAnnotations()
-        self.iface.mapCanvas().unsetMapTool(self.map_tool)
+        # self.iface.mapCanvas().unsetMapTool(self.map_tool)
         # set map tool to the previous one
         self.iface.mapCanvas().setMapTool(self.last_map_tool)
 
@@ -348,15 +346,23 @@ class TerraIndex:
 
     # --------------------------------------------------------------------------
 
-    def setMapTool(self):
+    def setMapTool(self, checked, newMapTool=TISelectionTool):
 
-        if type(self.iface.mapCanvas().mapTool()) is type(self.map_tool) and self.map_tool is not None:
-            print('type=type')
+        print(newMapTool)
+        print(args)
+
+        currentMapTool = self.iface.mapCanvas().mapTool()
+        if isinstance(currentMapTool, (TISelectionTool, TICrossSectionTool)):
+            if not isinstance(currentMapTool, newMapTool):
+                print(newMapTool)
+                self.iface.mapCanvas().setMapTool(newMapTool(self.iface, self))
         else:
-            self.map_tool = TISelectionTool(self.iface, self)
-            self.last_map_tool = self.iface.mapCanvas().mapTool()
-            self.iface.mapCanvas().setMapTool(self.map_tool)
+            print(newMapTool)
+            self.last_map_tool = currentMapTool
+            self.iface.mapCanvas().setMapTool(newMapTool(self.iface, self))
 
+
+    
     def getAuthorisationInfo(self):
         d = {
             'ApplicationCode': self.applicationcode,
@@ -375,8 +381,6 @@ class TerraIndex:
         if set(req).issubset(fields):
             projectID = feature[req[0]]
             measurementPointID = feature[req[1]]
-            #print(projectID)
-            #print(measurementPointID)
 
             request = BorelogRequest(self, )
 
@@ -429,7 +433,6 @@ class TerraIndex:
             self.iface.messageBar().pushMessage("Error", response.reason, level=Qgis.Critical)
             response.raise_for_status()
         else:
-            # print('response check true')
             xml_content = ET.fromstring(response.content)
 
             bytes64 = xml_content.find('.//b:Content', ns).text
@@ -527,10 +530,8 @@ class TerraIndex:
             features2 = self.sortFeatures(features)
             data = self.getBoreholeData(features2)
 
-            pprint.pprint(data)
 
             df = pd.DataFrame(data)
-            print(df)
             _, ext = os.path.splitext(filename)
 
             if ext == '.csv': 
@@ -594,7 +595,9 @@ class TerraIndex:
             self.dockwidget.PB_downloadpdf.clicked.connect(self.downloadPDF)
             self.dockwidget.PB_updateLayouts.pressed.connect(self.updateLayoutNames)
             self.dockwidget.PB_downloaddata.clicked.connect(self.downloadBoreholeData)
-            self.dockwidget.PB_crosssection.clicked.connect(self.getCrossSectionPDF)
+
+            setMapToolCrossSection = functools.partial(self.setMapTool, newMapTool=TICrossSectionTool)
+            self.dockwidget.PB_crosssection.clicked.connect(setMapToolCrossSection)
 
             # self.dockwidget.CB_layout.activated.connect(self.updateLayouts)
             # Load the layouts

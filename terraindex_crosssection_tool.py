@@ -1,18 +1,20 @@
 from qgis.gui import QgsMapTool, QgsRubberBand
-from qgis.core import  QgsPointXY, QgsProject, QgsPointXY, QgsRectangle, QgsWkbTypes, 
+from qgis.core import  QgsPointXY, QgsProject, QgsPointXY, QgsRectangle, QgsWkbTypes
 
-from qgis.PyQt.QtGui import QTextDocument, Qt
-from qgis.PyQt.QtCore import QSizeF
+from qgis.PyQt.QtGui import QTextDocument
+from qgis.PyQt.QtCore import QSizeF, Qt
 
 from collections import OrderedDict
 
 import numpy as np
 
 
-class TICrosssectionTool(QgsMapTool):
+class TICrossSectionTool(QgsMapTool):
     """Pointtool class, which overwrites the normal cursor during use of the plugin"""
     def __init__(self, iface, plugin):
         super(QgsMapTool, self).__init__(iface.mapCanvas())
+
+        self.setCursor(Qt.CrossCursor)
 
         self.iface = iface
         self.plugin = plugin

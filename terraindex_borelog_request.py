@@ -111,7 +111,10 @@ class BorelogRequest:
             layout = self.borelogParameters['Layout']
             PageOrientation = layout.split('PageOrientation=')[1].split(r'\n')[0]
             if not PageOrientation == 'poLandscape':
+                print('pageorientation landscape')
                 ### load other layout that is in landscape, give off warning
+            else:
+                print('did not work')
 
 
     def setXMLparameters(self):
@@ -145,14 +148,12 @@ class BorelogRequest:
         elem_boreholes = root.find('.//b:Boreholes', ns)
         for borehole_dict in self.boreholes:
             b = ET.SubElement(elem_boreholes, "{" + ns['b'] + "}Borehole")
-            for key, val in borehole_dict:
-                b = ET.SubElement(b, "{" + ns['b'] + "}" + key)
-                b.text = val
+            for key, val in borehole_dict.items():
+                a = ET.SubElement(b, "{" + ns['b'] + "}" + key)
+                a.text = val
 
 
         self.xml = ET.tostring(root)
-
-        # print(self.xml)
 
     @loadingbar
     def request(self):
@@ -173,7 +174,6 @@ class BorelogRequest:
 
 
 class BoreholeDataRequest:
-    
 
     def __init__(self, plugin):
         self.plugin = plugin
