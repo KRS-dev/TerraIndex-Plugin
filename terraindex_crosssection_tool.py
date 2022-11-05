@@ -1,12 +1,14 @@
 from qgis.gui import QgsMapTool, QgsRubberBand
-from qgis.core import  QgsPointXY, QgsProject, QgsPointXY, QgsRectangle, QgsWkbTypes
+from qgis.core import  QgsPointXY, QgsProject, QgsPointXY, QgsRectangle, QgsWkbTypes, QgsGeometry, QgsPolygon, QgsLineString, QgsCoordinateTransform
 
-from qgis.PyQt.QtGui import QTextDocument
+from qgis.PyQt.QtGui import QTextDocument, QColor
 from qgis.PyQt.QtCore import QSizeF, Qt
 
 from collections import OrderedDict
 
 import numpy as np
+
+from functools import partial
 
 
 class TICrossSectionTool(QgsMapTool):
@@ -21,10 +23,23 @@ class TICrossSectionTool(QgsMapTool):
 
         self.isEmittingPoint = False
 
-        self.rubberband = QgsRubberBand(self.canvas(), geometryType=QgsWkbTypes.LineString)
+        self.rubberband = QgsRubberBand(self.canvas(), geometryType=QgsWkbTypes.LineGeometry)
+        self.rubberband.setColor(QColor(0, 0, 0))
+        self.rubberband.setWidth(3)
+
+        self.bufferband = QgsRubberBand(self.canvas(), geometryType=QgsWkbTypes.PolygonGeometry)
+        self.thickness = 20
+
+        self.orth_segments = [] # list of QgsRubberBands for the orth seg
 
         self.distances = {}
 
+
+    def mapToLayer(self, QgsGeometry):
+        return self.canvas().mapSettings().mapToLayerCoordinates(self.plugin.TILayer, QgsGeometry)
+    
+    def layerToMap(self, QgsGeometry):
+        return self.canvas().mapSettings().layerToMapCoordinates(self.plugin.TILayer, QgsGeometry)
 
 
     def canvasPressEvent(self, event):
@@ -32,6 +47,7 @@ class TICrossSectionTool(QgsMapTool):
             if not self.isEmittingPoint:
                 self.startPoint = self.toMapCoordinates(event.pos())
                 self.endPoint = self.startPoint
+                self.unsetSelectedFeatures()
                 self.isEmittingPoint = True 
             
             else:
@@ -45,26 +61,54 @@ class TICrossSectionTool(QgsMapTool):
 
                 else:
                     self.unsetSelectedFeatures()
-                    bbRect_map = self.bbRect(10)
+                    self.isEmittingPoint = False
+
+                    layer = self.plugin.TILayer
+                    self.buffer(self.startPoint, self.endPoint)
+                    geom = self.bufferband.asGeometry()
                     
 
-                    if bbRect_map is not None:
-                        layer = self.plugin.TILayer
-                        bbRect = self.canvas().mapSettings().mapToLayerCoordinates(layer, bbRect_map)
-                        features = layer.getFeatures(bbRect)
+                    bbRect = self.mapToLayer(geom.boundingBox())
+                    features1 = layer.getFeatures(bbRect)
+
+                    tr = QgsCoordinateTransform(self.canvas().mapSettings().destinationCrs(), layer.crs(), QgsProject.instance())
+
+                    geom.transform(tr)
+
+                    features = []
+                    for f in features1:
+                        pointGeom = f.geometry()
+                        if geom.contains(pointGeom):
+                            features.append(f)
+
+                    proj_vec = self.getProjVec(self.startPoint, self.endPoint)
+
+                    selectedFeatures = []
+                    for f in features:
+
+                        pointf = self.layerToMap(f.geometry().asPoint())
+                        vec = pointf  - self.startPoint
+
+                        d = self.projLength(vec, proj_vec) # distance on line projection in coordinates of the mapcanvas
+
+                        pointLine = self.startPoint  + proj_vec*d       # new point
+
+                        seg = QgsRubberBand(self.canvas(), geometryType=QgsWkbTypes.LineGeometry)
+                        seg.setColor(QColor(100,100,100))
+                        seg.setWidth(2)
+                        seg.addPoint(pointLine, False)
+                        seg.addPoint(pointf, True)
+                        seg.show()
+
+                        self.orth_segments.append(seg)
+
+                        print(d)
+                        selectedFeatures.append((f,  d))
                         
-                        proj_vec = self.getProjVec()
-                        selectedFeatures = []
-                        for f in features:
-                            vec = self.canvas().mapSettings().layerToMapCoordinates(layer, f.geometry().asPoint()) - self.startPoint
-
-                            selectedFeatures.append((f,  self.projLength(vec, proj_vec)))
-                            
-                        self.setSelectedFeatures(selectedFeatures)
-
+                    self.setSelectedFeatures(selectedFeatures)
+                
         
         elif event.button() == Qt.RightButton:
-
             self.isEmittingPoint = False
             self.unsetSelectedFeatures()
             self.rubberband.hide()
@@ -78,12 +122,13 @@ class TICrossSectionTool(QgsMapTool):
 
         self.endPoint = self.toMapCoordinates(event.pos())
         self.showLine(self.startPoint, self.endPoint)
+        self.buffer(self.startPoint, self.endPoint)
 
     def canvasReleaseEvent(self, event):
         pass          
 
     def showLine(self, startPoint, endPoint):
-        self.rubberband.reset(QgsWkbTypes.LineString)
+        self.rubberband.reset(geometryType=QgsWkbTypes.LineGeometry)
         
         if startPoint.x() == endPoint.x() or startPoint.y() == endPoint.y():
             return
@@ -94,8 +139,8 @@ class TICrossSectionTool(QgsMapTool):
         self.rubberband.addPoint(point2, True) # true to update canvas  
         self.rubberband.show()
 
-    def bbRect(self, thickness):
-        '''Creates a rectangle with thickness around the line segment
+    def buffer(self, startPoint, endPoint):
+        '''Creates a rectangle with thickness orthogonal to a line segment
 
         Args:
             thickness (float): Thickness within the given coordinate systems xy-plane 
@@ -104,25 +149,34 @@ class TICrossSectionTool(QgsMapTool):
             QgsRectangle: Rectangle around the Line
         '''        
 
-        if self.startPoint is None or self.endPoint is None:
+        if startPoint is None or endPoint is None:
             return None
-        elif self.startPoint.compare(self.endPoint):
+        elif startPoint.compare(endPoint):
             return None
         else:
-            vec_norm = self.getProjVec()
-            vec_orth = np.array([vec_norm[1], -1*vec_norm[0]])
+            vec_norm = self.getProjVec(startPoint, endPoint)
+            vec_orth = np.array([-1*vec_norm.y(), vec_norm.x()])
 
-            a = thickness/2
+            a = self.thickness/2
 
-            point1 = QgsPointXY( self.startPoint.x() + a*vec_orth[0], self.startPoint.y() + a*vec_orth[1])
-            point2 = QgsPointXY( self.endPoint.x() - a*vec_orth[0], self.endPoint.y() - a*vec_orth[1])
-            return QgsRectangle(point1, point2)
+            point1 = QgsPointXY( startPoint.x() + a*vec_orth[0], startPoint.y() + a*vec_orth[1])
+            point2 = QgsPointXY( endPoint.x() + a*vec_orth[0], endPoint.y() + a*vec_orth[1])
+            point3 = QgsPointXY( endPoint.x() - a*vec_orth[0], endPoint.y() - a*vec_orth[1])
+            point4 = QgsPointXY( startPoint.x() - a*vec_orth[0], startPoint.y() - a*vec_orth[1])
+            
+            self.bufferband.reset(QgsWkbTypes.PolygonGeometry)
+            self.bufferband.addPoint(point1, False)
+            self.bufferband.addPoint(point2, False)
+            self.bufferband.addPoint(point3, False)
+            self.bufferband.addPoint(point4, True) 
+            self.bufferband.show()
+            
     
-    def getProjVec(self):
-        if self.startPoint is None or self.endPoint is None:
+    def getProjVec(self, startPoint, endPoint):
+        if startPoint is None or endPoint is None:
             return None
         else:
-            vec = self.endPoint - self.startPoint
+            vec = endPoint - startPoint
             return vec.normalized()
 
     def projLength(self, vec1, vec2):
@@ -140,20 +194,27 @@ class TICrossSectionTool(QgsMapTool):
     
 
     def setSelectedFeatures(self, features):
-        self.plugin.TILayer.selectByIds([f.key().id() for f in features])
+        self.plugin.TILayer.selectByIds([f[0].id() for f in features])
         self.plugin.crossSectionList = features
         
     def unsetSelectedFeatures(self):
         self.plugin.TILayer.removeSelection()
         self.plugin.crossSectionList = []
 
+        self.bufferband.reset()
+        for seg in self.orth_segments:
+            seg.reset()
+
     def getSelectedFeature(self):
         return self.plugin.TILayer.selectedFeatures()
 
 
     def deactivate(self):
-
+        self.unsetSelectedFeatures()
         self.rubberband.reset()
+        self.bufferband.reset()
+        for seg in self.orth_segments:
+            seg.reset()
         
         QgsMapTool.deactivate(self)
 

@@ -150,8 +150,9 @@ class TISelectionTool(QgsMapToolIdentify):
 
     def deactivate(self):
 
+        self.removeAnnotations()
+
         self.rubberband.reset()
-        
         QgsMapToolIdentify.deactivate(self)
 
 

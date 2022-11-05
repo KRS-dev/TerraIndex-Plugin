@@ -174,6 +174,8 @@ class TerraIndex:
         self.applicationcode = None
         self.errormessage = None
 
+        self.map_tool = None
+
         self.layoutsDict = {}
 
         self.crossSectionList = []
@@ -318,7 +320,8 @@ class TerraIndex:
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
 
         # reset maptool
-        self.map_tool.removeAnnotations()
+        if self.map_tool:
+            self.map_tool.deactivate()
         # self.iface.mapCanvas().unsetMapTool(self.map_tool)
         # set map tool to the previous one
         self.iface.mapCanvas().setMapTool(self.last_map_tool)
@@ -346,20 +349,26 @@ class TerraIndex:
 
     # --------------------------------------------------------------------------
 
-    def setMapTool(self, checked, newMapTool=TISelectionTool):
+    def setMapTool(self, newMapTool=TISelectionTool):
 
         print(newMapTool)
-        print(args)
 
         currentMapTool = self.iface.mapCanvas().mapTool()
         if isinstance(currentMapTool, (TISelectionTool, TICrossSectionTool)):
             if not isinstance(currentMapTool, newMapTool):
-                print(newMapTool)
-                self.iface.mapCanvas().setMapTool(newMapTool(self.iface, self))
+
+                tool = newMapTool(self.iface, self)
+                print(tool)
+                self.map_tool = tool
+                self.iface.mapCanvas().setMapTool(tool)
         else:
-            print(newMapTool)
+
             self.last_map_tool = currentMapTool
-            self.iface.mapCanvas().setMapTool(newMapTool(self.iface, self))
+
+            tool = newMapTool(self.iface, self)
+            print(tool)
+            self.map_tool = tool
+            self.iface.mapCanvas().setMapTool(tool)
 
 
     
@@ -444,8 +453,8 @@ class TerraIndex:
 
             webbrowser.open(filename)
     
-    def normalizeCrossSectionDistances(self, min=10):
-        if self.crossSectionList is not None:
+    def normalizeCrossSectionDistances(self, crossSectionList, min=10):
+        if crossSectionList:
             distances = [float(f[1]) for f in self.crossSectionList]
             diff = np.diff(distances)
             min_dist = np.min(diff)
@@ -453,16 +462,16 @@ class TerraIndex:
             distances2 = np.hstack([np.array([0]), np.cumsum(diff)*factor]) # start distances from 0
 
             crossSectionList2 = []
-            for i, (f, d) in self.crossSectionList:
-                crossSectionList2.append([f, distances2[i]])
+            for i, (f, d) in enumerate(self.crossSectionList):
+                crossSectionList2.append([f, round(distances2[i])])
 
             self.crossSectionList = crossSectionList2
             return factor
 
     @login
-    def getCrossSectionPDF(self):
+    def getCrossSectionPDF(self, crossSectionList):
 
-        scale = self.normalizeCrossSectionDistances()
+        scale = self.normalizeCrossSectionDistances(crossSectionList)
 
         boreholeid_list = []
         for feature, distance in self.crossSectionList:
@@ -475,13 +484,15 @@ class TerraIndex:
         request = BorelogRequest(self, DrawKind='CrossSection', DrawMode='MultiPage', OutputType='PDF')
 
         for d in boreholeid_list:
+            print(d)
             request.addBorehole(**d)
 
         filename, _ = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save PDF:"), 'CrossSection', self.tr('pdf (*.pdf)') )
 
         response = request.request()
         if response.status_code is not requests.codes.ok:
-            
+            print(response)
+            print(response.text)
             self.iface.messageBar().pushMessage("Error", response.reason, level=Qgis.Critical)
             response.raise_for_status()
         else:
@@ -552,12 +563,15 @@ class TerraIndex:
         return layoutDataRequest(self, TemplateID=id)
     
     def downloadPDF(self):
-        features = self.TILayer.selectedFeatures()
+        
+        if self.crossSectionList:
+            self.getCrossSectionPDF(self.crossSectionList)
+        else:
+            features = self.TILayer.selectedFeatures()
 
-        if len(features) > 0 :
-
-            features2 = self.sortFeatures(features)
-            self.getBorelogsPDF(features2) 
+            if len(features) > 0 :
+                features2 = self.sortFeatures(features)
+                self.getBorelogsPDF(features2) 
 
     def sortFeatures(self, features):
 
@@ -591,13 +605,15 @@ class TerraIndex:
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
-            self.dockwidget.PB_boreprofile.clicked.connect(self.setMapTool)
+            
             self.dockwidget.PB_downloadpdf.clicked.connect(self.downloadPDF)
             self.dockwidget.PB_updateLayouts.pressed.connect(self.updateLayoutNames)
             self.dockwidget.PB_downloaddata.clicked.connect(self.downloadBoreholeData)
 
             setMapToolCrossSection = functools.partial(self.setMapTool, newMapTool=TICrossSectionTool)
             self.dockwidget.PB_crosssection.clicked.connect(setMapToolCrossSection)
+            setMapToolSelection = functools.partial(self.setMapTool, newMapTool=TISelectionTool)
+            self.dockwidget.PB_boreprofile.clicked.connect(setMapToolSelection)
 
             # self.dockwidget.CB_layout.activated.connect(self.updateLayouts)
             # Load the layouts

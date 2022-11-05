@@ -85,9 +85,10 @@ class BorelogRequest:
         self.xml = None
 
     def addBorehole(self, BoreHoleID: int, ProjectID: int, **kwargs):
+
         d = {'BoreHoleID': str(BoreHoleID), 'ProjectID': str(ProjectID)}
 
-        for key, val in kwargs:
+        for key, val in kwargs.items():
             d[key] = str(val)
 
         self.boreholes.append(d)
@@ -167,8 +168,8 @@ class BorelogRequest:
             'Authorization' : 'Bearer {}'.format(token) 
         }
 
+        print(self.xml)
         response = requests.post(url=self.url, data=self.xml, headers=headers)
-
         return response
 
 
@@ -218,6 +219,7 @@ class BoreholeDataRequest:
                 response = requests.post(url = url, headers=headers, data=json.dumps(body))
                 
                 if response.status_code is not requests.codes.ok:
+                    print(response.text)
                     response.raise_for_status()
 
                 else:
