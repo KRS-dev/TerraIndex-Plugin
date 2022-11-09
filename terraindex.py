@@ -436,6 +436,9 @@ class TerraIndex:
 
         filename, _ = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save PDF:"), 'borelogs', self.tr('pdf (*.pdf)') )
 
+        if not filename:
+            return
+
         response = request.request()
         if response.status_code is not requests.codes.ok:
             
@@ -453,28 +456,35 @@ class TerraIndex:
 
             webbrowser.open(filename)
     
-    def normalizeCrossSectionDistances(self, crossSectionList, min=10):
+    def normalizeCrossSectionDistances(self, crossSectionList, min_width=5):
         if crossSectionList:
-            distances = [float(f[1]) for f in self.crossSectionList]
-            diff = np.diff(distances)
+            distances = [float(f[1]) for f in crossSectionList]
+            idx = np.argsort(distances).tolist()
+            print(idx)
+            sorted_distances = [distances[i] for i in idx]
+            print(sorted_distances)
+    
+            
+            sorted_crossSections = [crossSectionList[i] for i in idx]
+
+            diff = np.diff(sorted_distances)
             min_dist = np.min(diff)
-            factor = min/min_dist
+            factor = min_width/min_dist
             distances2 = np.hstack([np.array([0]), np.cumsum(diff)*factor]) # start distances from 0
 
             crossSectionList2 = []
-            for i, (f, d) in enumerate(self.crossSectionList):
+            for i, (f, d) in enumerate(sorted_crossSections):
                 crossSectionList2.append([f, round(distances2[i])])
 
-            self.crossSectionList = crossSectionList2
-            return factor
+            return factor, crossSectionList2
 
     @login
     def getCrossSectionPDF(self, crossSectionList):
 
-        scale = self.normalizeCrossSectionDistances(crossSectionList)
+        scale, norm_crossSections = self.normalizeCrossSectionDistances(crossSectionList)
 
         boreholeid_list = []
-        for feature, distance in self.crossSectionList:
+        for feature, distance in norm_crossSections:
             boreholeid_list.append({'ProjectID': feature['ProjectID'],
                                 'BoreHoleID': feature['MeasurementPointID'],
                                 'Distance': distance
@@ -488,6 +498,9 @@ class TerraIndex:
             request.addBorehole(**d)
 
         filename, _ = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save PDF:"), 'CrossSection', self.tr('pdf (*.pdf)') )
+
+        if not filename:
+            return
 
         response = request.request()
         if response.status_code is not requests.codes.ok:

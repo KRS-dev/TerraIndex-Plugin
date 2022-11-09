@@ -21,15 +21,15 @@
                 <b:BorelogParameters>
                     <b:Boreholes>
                     </b:Boreholes>
-                    <b:DrawKind>BoreHole</b:DrawKind>
-                    <b:DrawMode>Single</b:DrawMode>
+                    <b:DrawKind>CrossSection</b:DrawKind>
+                    <b:DrawMode>MultiPage</b:DrawMode>
                     <b:ForceCaching>false</b:ForceCaching>
                     <b:Language>NL</b:Language>
                     <b:Layout></b:Layout>
                     <b:LayoutName>hjkh</b:LayoutName>
                     <b:LayoutDirectory i:nil="true"/>
                     <b:LayoutGefCpt i:nil="true"/>
-                    <b:OutputType>PNG</b:OutputType>
+                    <b:OutputType>PDF</b:OutputType>
                     <b:PageNumber>1</b:PageNumber>
                     <b:TempDirectory i:nil="true"/>
                     <b:TestingTables i:nil="true"/>
