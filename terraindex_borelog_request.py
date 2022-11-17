@@ -105,6 +105,8 @@ class BorelogRequest:
             layoutID = self.plugin.dockwidget.CB_layout.currentData()
             layout = self.plugin.layoutsDict[layoutID]
 
+            print('layoutname: ', layout['TemplateName'], '\n layoutID: ', layoutID)
+
             self.borelogParameters['Layout'] = self.plugin.getLayout(layoutID)
             self.borelogParameters['LayoutName'] = layout['TemplateName']
 
@@ -115,7 +117,7 @@ class BorelogRequest:
                 print('pageorientation landscape')
                 ### load other layout that is in landscape, give off warning
             else:
-                print('did not work')
+                print('po did not work')
 
 
     def setXMLparameters(self):
@@ -152,9 +154,13 @@ class BorelogRequest:
             for key, val in borehole_dict.items():
                 a = ET.SubElement(b, "{" + ns['b'] + "}" + key)
                 a.text = val
+                print(key, val)
 
 
         self.xml = ET.tostring(root)
+
+        with open(r'C:\Users\Desktop\Downloads\test.xml', 'wb') as f:
+            f.write(ET.tostring(root))
 
     @loadingbar
     def request(self):
@@ -168,7 +174,6 @@ class BorelogRequest:
             'Authorization' : 'Bearer {}'.format(token) 
         }
 
-        print(self.xml)
         response = requests.post(url=self.url, data=self.xml, headers=headers)
         return response
 

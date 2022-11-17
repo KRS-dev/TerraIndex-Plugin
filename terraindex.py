@@ -460,7 +460,6 @@ class TerraIndex:
         if crossSectionList:
             distances = [float(f[1]) for f in crossSectionList]
             idx = np.argsort(distances).tolist()
-            print(idx)
             sorted_distances = [distances[i] for i in idx]
             print(sorted_distances)
     

@@ -28,12 +28,16 @@ class TICrossSectionTool(QgsMapTool):
         self.rubberband.setWidth(3)
 
         self.bufferband = QgsRubberBand(self.canvas(), geometryType=QgsWkbTypes.PolygonGeometry)
-        self.thickness = 20
+        
+        self.thickness = self.plugin.dockwidget.SB_crosssectionWidth.value()
+        self.plugin.dockwidget.SB_crosssectionWidth.valueChanged.connect(self.setThickness)
 
         self.orth_segments = [] # list of QgsRubberBands for the orth seg
 
         self.distances = {}
 
+    def setThickness(self):
+        self.thickness = self.plugin.dockwidget.SB_crosssectionWidth.value()
 
     def mapToLayer(self, QgsGeometry):
         return self.canvas().mapSettings().mapToLayerCoordinates(self.plugin.TILayer, QgsGeometry)
@@ -102,7 +106,6 @@ class TICrossSectionTool(QgsMapTool):
 
                         self.orth_segments.append(seg)
 
-                        print(d)
                         selectedFeatures.append((f,  d))
                         
                     self.setSelectedFeatures(selectedFeatures)
