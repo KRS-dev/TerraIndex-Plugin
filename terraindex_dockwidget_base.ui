@@ -121,6 +121,9 @@
             <property name="showCurrentScaleButton">
              <bool>true</bool>
             </property>
+            <property name="scale">
+             <bool>true</bool>
+            </property>
             <property name="minScale">
              <bool>false</bool>
             </property>

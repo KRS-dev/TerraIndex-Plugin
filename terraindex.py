@@ -53,7 +53,7 @@ import numpy as np
 
 import pprint
 
-from typing import Any, Iterable, List, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, List, Sequence, Tuple, Union
 
 ## Namespaces for the SOAP request/response
 ns = {
@@ -181,7 +181,7 @@ class TerraIndex:
 
         self.layoutsDict = {}
 
-        self.crossSectionList = []
+        self.crossSectionDict = {}
 
         self.pluginIsActive = False
 
@@ -442,49 +442,52 @@ class TerraIndex:
             webbrowser.open(filename)
     
     @staticmethod
-    def sortCrossSection(crossSectionList: List[Tuple[QgsFeature, float]]) -> List[Tuple[QgsFeature, float]]:
+    def sortCrossSection(crossSectionDict: Dict[int, Tuple[QgsFeature, float]]) -> Dict[int, Tuple[QgsFeature, float]]:
         
         def distance( a: Tuple[Any, float]) -> float:
-            return a[1]
+            return a[1][1]
         
-        return sorted(crossSectionList, key=distance) 
+        return {k: v for k, v in sorted(crossSectionDict.items(), key=distance)}
     
     @staticmethod
-    def scaleCrossSectionDistances(crossSectionList: List[Tuple[QgsFeature, float]], factor: float) -> List[Tuple[QgsFeature, float]]:
-        return [(f, factor*d) for f, d in crossSectionList]
+    def scaleCrossSectionDistances(crossSectionDict: Dict[int, Tuple[QgsFeature, float]], factor: float) -> Dict[int, Tuple[QgsFeature, float]]:
+        distances= [x[1] for x in crossSectionDict.values()]
+        min_dist = min(distances)
+
+        return {fid: (f, factor*(d-min_dist)) for fid, (f, d) in crossSectionDict.items()}
 
 
-    # def normalizeCrossSectionDistances(self, crossSectionList: List[Tuple[QgsFeature, float]], min_width:int=10, factor=None) -> Tuple[float, List[Tuple[QgsFeature, float]]]:
-        if crossSectionList:
-            distances = [float(f[1]) for f in crossSectionList]
-            idx = np.argsort(distances).tolist()
-            sorted_distances = [distances[i] for i in idx]
-            print(sorted_distances)
+    # # def normalizeCrossSectionDistances(self, crossSectionDict: Dict[int, Tuple[QgsFeature, float]], min_width:int=10, factor=None) -> Tuple[float, Dict[int, Tuple[QgsFeature, float]]]:
+    #     if crossSectionDict:
+    #         distances = [float(f[1]) for f in crossSectionDict]
+    #         idx = np.argsort(distances).tolist()
+    #         sorted_distances = [distances[i] for i in idx]
+    #         print(sorted_distances)
  
-            sorted_crossSections = [crossSectionList[i] for i in idx]
+    #         sorted_crossSections = [crossSectionDict[i] for i in idx]
 
-            diff = np.diff(sorted_distances)
-            min_dist = np.min(diff)
-            if factor is None:
-                factor = min_width/min_dist
-                distances2 = np.hstack([np.array([0]), np.cumsum(diff)*factor]) # start distances from 0
-            else:
-                distances2 = np.hstack([np.array([0]), np.cumsum(diff)*factor]) # start distances from 0
+    #         diff = np.diff(sorted_distances)
+    #         min_dist = np.min(diff)
+    #         if factor is None:
+    #             factor = min_width/min_dist
+    #             distances2 = np.hstack([np.array([0]), np.cumsum(diff)*factor]) # start distances from 0
+    #         else:
+    #             distances2 = np.hstack([np.array([0]), np.cumsum(diff)*factor]) # start distances from 0
 
-            crossSectionList2 = []
-            for i, (f, d) in enumerate(sorted_crossSections):
-                crossSectionList2.append((f, round(distances2[i])))
+    #         crossSectionDict2 = []
+    #         for i, (f, d) in enumerate(sorted_crossSections):
+    #             crossSectionDict2.append((f, round(distances2[i])))
 
-            return factor, crossSectionList2
+    #         return factor, crossSectionDict2
 
     @login
-    def getCrossSectionPDF(self, crossSectionList: List[List[QgsFeature, float]]):
+    def getCrossSectionPDF(self, crossSectionDict: Dict[int, Tuple[QgsFeature, float]]):
 
         scale = self.dockwidget.SW_crossSection.scale()
-        norm_crossSections = self.scaleCrossSectionDistances(self.sortCrossSection(crossSectionList), scale)
+        norm_crossSections = self.scaleCrossSectionDistances(self.sortCrossSection(crossSectionDict), scale)
 
         boreholeid_list = []
-        for feature, distance in norm_crossSections:
+        for feature, distance in norm_crossSections.values():
             boreholeid_list.append({'ProjectID': feature['ProjectID'],
                                 'BoreHoleID': feature['MeasurementPointID'],
                                 'Distance': distance
@@ -558,11 +561,11 @@ class TerraIndex:
             
             df = pd.DataFrame(data)
 
-            if self.crossSectionList:
+            if self.crossSectionDict:
                 self.checkCanvasCRS()
 
-                crossSectionList2 = self.sortCrossSection
-                join_table = [[f['MeasurementPointID'], f['ProjectID'], d] for f, d in self.crossSectionList]
+                crossSectionDict2 = self.sortCrossSection(self.crossSectionDict)
+                join_table = [[f['MeasurementPointID'], f['ProjectID'], d] for f, d in self.crossSectionDict.values()]
                 join_table = pd.DataFrame(data=join_table, columns=['MeasurementPointID', 'ProjectID', 'CrossSectionDistance'])
 
                 print(join_table.tail())
@@ -598,9 +601,9 @@ class TerraIndex:
             self.iface.messageBar().pushMessage('Error', 'Kon geen ProjectID of MeasurementPointID in de features vinden. Heb je wel punten van de TerraIndex Laag geselecteerd?', level=Qgis.Warning)
             return
 
-        if self.crossSectionList:
+        if self.crossSectionDict:
             self.checkCanvasCrs()
-            self.getCrossSectionPDF(self.crossSectionList)
+            self.getCrossSectionPDF(self.crossSectionDict)
         else:
             features2 = self.sortFeatures(features)
             self.getBorelogsPDF(features2) 
