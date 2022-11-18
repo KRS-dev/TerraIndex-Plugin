@@ -1,7 +1,7 @@
 from qgis.gui import QgsMapTool, QgsRubberBand
 from qgis.core import  QgsPointXY, QgsProject, QgsPointXY, QgsRectangle, QgsWkbTypes, QgsGeometry, QgsPolygon, QgsLineString, QgsCoordinateTransform
 
-from qgis.PyQt.QtGui import QTextDocument, QColor
+from qgis.PyQt.QtGui import QTextDocument, QColor, QGuiApplication
 from qgis.PyQt.QtCore import QSizeF, Qt
 
 from collections import OrderedDict
@@ -49,20 +49,23 @@ class TICrossSectionTool(QgsMapTool):
     def canvasPressEvent(self, event):
         if event.button() == Qt.LeftButton:
             if not self.isEmittingPoint:
-                self.startPoint = self.toMapCoordinates(event.pos())
-                self.endPoint = self.startPoint
-                self.unsetSelectedFeatures()
-                self.isEmittingPoint = True 
-            
+                modifiers = QGuiApplication.keyboardModifiers()
+                if modifiers == Qt.ShiftModifier & self.startPoint is None:
+                    print('shift clicked')
+                    pass
+                else:
+                    self.startPoint = self.toMapCoordinates(event.pos())
+                    self.endPoint = self.startPoint
+                    self.unsetSelectedFeatures()
+                    self.isEmittingPoint = True 
             else:
+
                 self.endPoint = self.toMapCoordinates(event.pos())
 
                 if self.startPoint.compare(self.endPoint):
                     self.unsetSelectedFeatures()
                     self.rubberband.hide()
                     self.isEmittingPoint = False
-
-
                 else:
                     self.unsetSelectedFeatures()
                     self.isEmittingPoint = False
@@ -87,26 +90,32 @@ class TICrossSectionTool(QgsMapTool):
 
                     proj_vec = self.getProjVec(self.startPoint, self.endPoint)
 
-                    selectedFeatures = []
+                    features = []
+                    distances = []
                     for f in features:
 
-                        pointf = self.layerToMap(f.geometry().asPoint())
+                        pointf = self.layerToMap(f.geometry().asPoint()) # PointXY in mapcanvas coordinates
                         vec = pointf  - self.startPoint
 
-                        d = self.projLength(vec, proj_vec) # distance on line projection in coordinates of the mapcanvas
+                        d = self.projLength(vec, proj_vec) # projection distance on line in coordinatesystem of the mapcanvas
 
-                        pointLine = self.startPoint  + proj_vec*d       # new point
+                        pointOnLine = self.startPoint  + proj_vec*d       # new point
 
                         seg = QgsRubberBand(self.canvas(), geometryType=QgsWkbTypes.LineGeometry)
                         seg.setColor(QColor(100,100,100))
                         seg.setWidth(2)
-                        seg.addPoint(pointLine, False)
+                        seg.addPoint(pointOnLine, False)
                         seg.addPoint(pointf, True)
                         seg.show()
 
                         self.orth_segments.append(seg)
 
-                        selectedFeatures.append((f,  d))
+                        features.append(f)
+                        distances.append(d)
+
+                    min_dist = min(distances)
+                    distances = [d - min_dist for d in distances]
+                    selectedFeatures = zip(features, distances)
                         
                     self.setSelectedFeatures(selectedFeatures)
                 

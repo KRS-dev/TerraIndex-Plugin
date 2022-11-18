@@ -25,7 +25,8 @@ from operator import attrgetter
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon, QPixmap
 from qgis.PyQt.QtWidgets import QAction, QGraphicsScene, QGraphicsPixmapItem, QProgressBar, QFileDialog
-from qgis.core import Qgis, QgsProject, QgsVectorLayer, QgsDataSourceUri
+from qgis.core import Qgis, QgsProject, QgsVectorLayer, QgsFeature, QgsDataSourceUri
+from qgis.gui import QgsMapTool, QgisInterface
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -51,6 +52,8 @@ import pandas as pd
 import numpy as np
 
 import pprint
+
+from typing import Any, Iterable, List, Sequence, Tuple, Union
 
 ## Namespaces for the SOAP request/response
 ns = {
@@ -131,7 +134,7 @@ def login(func):
 class TerraIndex:
     """TerraIndex Plugin Implementation """
 
-    def __init__(self, iface):
+    def __init__(self, iface: QgisInterface):
         """Constructor.
 
         :param iface: An interface instance that will be passed to this class
@@ -187,7 +190,7 @@ class TerraIndex:
 
     # noinspection PyMethodMayBeStatic
 
-    def tr(self, message):
+    def tr(self, message: str) -> str:
         """Get the translation for a string using Qt translation API.
 
         We implement this ourselves since we do not inherit QObject.
@@ -349,28 +352,19 @@ class TerraIndex:
 
     # --------------------------------------------------------------------------
 
-    def setMapTool(self, newMapTool=TISelectionTool):
-
-        print(newMapTool)
-
+    def setMapTool(self, newMapTool: QgsMapTool=TISelectionTool):
         currentMapTool = self.iface.mapCanvas().mapTool()
         if isinstance(currentMapTool, (TISelectionTool, TICrossSectionTool)):
             if not isinstance(currentMapTool, newMapTool):
-
                 tool = newMapTool(self.iface, self)
-                print(tool)
                 self.map_tool = tool
                 self.iface.mapCanvas().setMapTool(tool)
         else:
 
             self.last_map_tool = currentMapTool
-
             tool = newMapTool(self.iface, self)
-            print(tool)
             self.map_tool = tool
             self.iface.mapCanvas().setMapTool(tool)
-
-
     
     def getAuthorisationInfo(self):
         d = {
@@ -381,54 +375,45 @@ class TerraIndex:
         return d
 
     @login
-    def getBorelogImage(self, feature):
+    def getBorelogImage(self, feature: QgsFeature):
         
-        fields = [field.name() for field in feature.fields()]
-
-        req = ['ProjectID', 'MeasurementPointID']
-
-        if set(req).issubset(fields):
-            projectID = feature[req[0]]
-            measurementPointID = feature[req[1]]
-
-            request = BorelogRequest(self, )
-
-            request.addBorehole(measurementPointID, projectID)
-
-            response = request.request()
-
-            if response.status_code is not requests.codes.ok:
-                
-                self.iface.messageBar().pushMessage("Error", response.reason, level=Qgis.Critical)
-                response.raise_for_status()
-            else:
-                xml_content = ET.fromstring(response.content)
-
-                bytes64 = xml_content.find('.//b:Content', ns).text
-
-                bytes = base64.b64decode(bytes64)
-
-
-                pixmap = QPixmap()
-                pixmap.loadFromData(bytes, 'PNG')
-                pmitem = QGraphicsPixmapItem(pixmap)
-                scene = QGraphicsScene()
-                scene.addItem(pmitem)
-                self.dockwidget.graphicsView.setScene(scene)
-
-        else:
-            # show warning maybe
+        if self.checkRequiredFields(feature) is False:
             self.iface.messageBar().pushMessage('Error', 'Kon geen ProjectID of MeasurementPointID in de features vinden. Heb je wel punten van de TerraIndex Laag geselecteerd?', level=Qgis.Warning)
+            return
+
+        projectID = feature['ProjectID']
+        measurementPointID = feature['MeasurementPointID']
+
+        request = BorelogRequest(self)
+        request.addBorehole(measurementPointID, projectID)
+        response = request.request()
+
+        if response.status_code is not requests.codes.ok:
+            self.iface.messageBar().pushMessage("Error", response.reason, level=Qgis.Critical)
+            response.raise_for_status()
+        else:
+            xml_content = ET.fromstring(response.content)
+            bytes64 = xml_content.find('.//b:Content', ns).text
+            bytes = base64.b64decode(bytes64)
+            pixmap = QPixmap()
+            pixmap.loadFromData(bytes, 'PNG')
+            pmitem = QGraphicsPixmapItem(pixmap)
+            scene = QGraphicsScene()
+            scene.addItem(pmitem)
+            self.dockwidget.graphicsView.setScene(scene)
     
     @login
-    def getBorelogsPDF(self, features):
+    def getBorelogsPDF(self, features: Iterable[QgsFeature]):
+
+        if self.checkRequiredFields(features[0]) is False:
+            self.iface.messageBar().pushMessage('Error', 'Kon geen ProjectID of MeasurementPointID in de features vinden. Heb je wel punten van de TerraIndex Laag geselecteerd?', level=Qgis.Warning)
+            return
 
         boreholeid_list = []
         for feature in features:
             boreholeid_list.append({'ProjectID': feature['ProjectID'],
                                 'BoreHoleID': feature['MeasurementPointID']})
         
-
         request = BorelogRequest(self, DrawMode='MultiPage', OutputType='PDF')
 
         for d in boreholeid_list:
@@ -456,31 +441,47 @@ class TerraIndex:
 
             webbrowser.open(filename)
     
-    def normalizeCrossSectionDistances(self, crossSectionList, min_width=5):
+    @staticmethod
+    def sortCrossSection(crossSectionList: List[Tuple[QgsFeature, float]]) -> List[Tuple[QgsFeature, float]]:
+        
+        def distance( a: Tuple[Any, float]) -> float:
+            return a[1]
+        
+        return sorted(crossSectionList, key=distance) 
+    
+    @staticmethod
+    def scaleCrossSectionDistances(crossSectionList: List[Tuple[QgsFeature, float]], factor: float) -> List[Tuple[QgsFeature, float]]:
+        return [(f, factor*d) for f, d in crossSectionList]
+
+
+    # def normalizeCrossSectionDistances(self, crossSectionList: List[Tuple[QgsFeature, float]], min_width:int=10, factor=None) -> Tuple[float, List[Tuple[QgsFeature, float]]]:
         if crossSectionList:
             distances = [float(f[1]) for f in crossSectionList]
             idx = np.argsort(distances).tolist()
             sorted_distances = [distances[i] for i in idx]
             print(sorted_distances)
-    
-            
+ 
             sorted_crossSections = [crossSectionList[i] for i in idx]
 
             diff = np.diff(sorted_distances)
             min_dist = np.min(diff)
-            factor = min_width/min_dist
-            distances2 = np.hstack([np.array([0]), np.cumsum(diff)*factor]) # start distances from 0
+            if factor is None:
+                factor = min_width/min_dist
+                distances2 = np.hstack([np.array([0]), np.cumsum(diff)*factor]) # start distances from 0
+            else:
+                distances2 = np.hstack([np.array([0]), np.cumsum(diff)*factor]) # start distances from 0
 
             crossSectionList2 = []
             for i, (f, d) in enumerate(sorted_crossSections):
-                crossSectionList2.append([f, round(distances2[i])])
+                crossSectionList2.append((f, round(distances2[i])))
 
             return factor, crossSectionList2
 
     @login
-    def getCrossSectionPDF(self, crossSectionList):
+    def getCrossSectionPDF(self, crossSectionList: List[List[QgsFeature, float]]):
 
-        scale, norm_crossSections = self.normalizeCrossSectionDistances(crossSectionList)
+        scale = self.dockwidget.SW_crossSection.scale()
+        norm_crossSections = self.scaleCrossSectionDistances(self.sortCrossSection(crossSectionList), scale)
 
         boreholeid_list = []
         for feature, distance in norm_crossSections:
@@ -488,7 +489,6 @@ class TerraIndex:
                                 'BoreHoleID': feature['MeasurementPointID'],
                                 'Distance': distance
                                 })
-        
 
         request = BorelogRequest(self, DrawKind='CrossSection', DrawMode='MultiPage', OutputType='PDF')
 
@@ -521,7 +521,7 @@ class TerraIndex:
             webbrowser.open(filename)
 
     @login
-    def getBoreholeData(self, features):
+    def requestBoreholeData(self, features: Iterable[QgsFeature]) ->  dict:
 
         boreholeid_list = []
         for feature in features:
@@ -547,21 +547,35 @@ class TerraIndex:
 
         filename, selectedFilter = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save Borehole Data:"), 'borelogs_data', self.tr('data (*.csv *.xlsx)') )
 
+        if not filename:
+            return
+
         features = self.TILayer.selectedFeatures()
 
         if len(features) > 0:
             features2 = self.sortFeatures(features)
-            data = self.getBoreholeData(features2)
-
-
+            data = self.requestBoreholeData(features2)
+            
             df = pd.DataFrame(data)
+
+            if self.crossSectionList:
+                self.checkCanvasCRS()
+
+                crossSectionList2 = self.sortCrossSection
+                join_table = [[f['MeasurementPointID'], f['ProjectID'], d] for f, d in self.crossSectionList]
+                join_table = pd.DataFrame(data=join_table, columns=['MeasurementPointID', 'ProjectID', 'CrossSectionDistance'])
+
+                print(join_table.tail())
+
+                df = pd.merge(df, join_table, how='left', left_on=['MeasurementPointID', 'ProjectID'], right_on=['MeasurementPointID', 'ProjectID'])
+
             _, ext = os.path.splitext(filename)
 
             if ext == '.csv': 
+                print('.csv')
                 df.to_csv(filename, sep=';')
             elif ext == '.xlsx':
                 df.to_excel(filename)
-
 
     @login
     def updateLayoutNames(self):
@@ -571,21 +585,28 @@ class TerraIndex:
             self.dockwidget.CB_layout.addItem(val['TemplateName'], userData=key)
     
     @login
-    def getLayout(self, id):
+    def getLayout(self, id: int) -> str:
         return layoutDataRequest(self, TemplateID=id)
     
     def downloadPDF(self):
         
+        features = self.TILayer.selectedFeatures()
+            
+        if not len(features) > 0 :
+            return
+        elif self.checkRequiredFields(features[0]) is False:
+            self.iface.messageBar().pushMessage('Error', 'Kon geen ProjectID of MeasurementPointID in de features vinden. Heb je wel punten van de TerraIndex Laag geselecteerd?', level=Qgis.Warning)
+            return
+
         if self.crossSectionList:
+            self.checkCanvasCrs()
             self.getCrossSectionPDF(self.crossSectionList)
         else:
-            features = self.TILayer.selectedFeatures()
+            features2 = self.sortFeatures(features)
+            self.getBorelogsPDF(features2) 
 
-            if len(features) > 0 :
-                features2 = self.sortFeatures(features)
-                self.getBorelogsPDF(features2) 
-
-    def sortFeatures(self, features):
+    @staticmethod
+    def sortFeatures(features: Iterable[QgsFeature]) -> List[QgsFeature]:
 
         def get_projectID(f):
             return f['ProjectID']
@@ -599,6 +620,24 @@ class TerraIndex:
         features2 = sorted(features, key=sortProjectPoint) 
 
         return features2
+    
+    def checkCanvasCrs(self):
+        crs = self.iface.mapCanvas().destinationCrs()
+        if not crs.authid() == 'EPSG:28992':
+            self.iface.messageBar().pushMessage(
+                "CRS warning", 
+                "The project CRS is not EPSG:28992. Note that the crosssectional distance will be calculated in the project CRS:{}".format(crs.authid()), 
+                level=Qgis.Warning
+                )
+
+    @staticmethod
+    def checkRequiredFields(feature: QgsFeature) -> bool:
+
+        req = ['ProjectID', 'MeasurementPointID']
+        fields = [field.name() for field in feature.fields()]
+
+        return set(req).issubset(fields)
+
 
     def run(self):
         """Run method that loads and starts the plugin"""
