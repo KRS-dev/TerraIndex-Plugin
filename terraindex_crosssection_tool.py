@@ -1,21 +1,24 @@
 from typing import List, Tuple, Union
-from qgis.gui import QgsRubberBand, QgsMapToolIdentify
+from qgis.gui import QgsRubberBand, QgsMapToolIdentify, QgsMapTool
 from qgis.core import  QgsPointXY, QgsProject, QgsPointXY, QgsRectangle, QgsWkbTypes, QgsGeometry, QgsPolygon, QgsLineString, QgsCoordinateTransform, QgsVector, QgsFeature
 
-from qgis.PyQt.QtGui import QTextDocument, QColor, QGuiApplication
+from qgis.PyQt.QtGui import QTextDocument, QColor, QGuiApplication, QStandardItemModel
 from qgis.PyQt.QtCore import QSizeF, Qt
 
 from collections import OrderedDict
 
 import numpy as np
+import pandas as pd
 
 from functools import partial
 
 
-class TICrossSectionTool(QgsMapToolIdentify):
+class TICrossSectionTool(QgsMapTool):
     """Pointtool class, which overwrites the normal cursor during use of the plugin"""
     def __init__(self, iface, plugin):
-        super(QgsMapToolIdentify, self).__init__(iface.mapCanvas())
+        super(QgsMapTool, self).__init__(iface.mapCanvas())
+
+        self.identifier = QgsMapToolIdentify(iface.mapCanvas())
 
         self.setCursor(Qt.CrossCursor)
 
@@ -36,6 +39,7 @@ class TICrossSectionTool(QgsMapToolIdentify):
         self.orth_segments = {} # dictionary of QgsRubberBands to keep track of the orthogonal segments
 
         self.distances = {}
+        self.isOverrideCursor = False
 
     def setThickness(self):
         self.thickness = self.plugin.dockwidget.SB_crosssectionWidth.value()
@@ -51,15 +55,17 @@ class TICrossSectionTool(QgsMapToolIdentify):
         if event.button() == Qt.LeftButton:
             if not self.isEmittingPoint:
                 modifiers = event.modifiers()
-                if modifiers == Qt.ShiftModifier:
-                    print('shift clicked')
-                    feature = self.identify(event.x(), event.y(), self.plugin.TILayer, QgsMapToolIdentify.TopDownStopAtFirst)
+                if modifiers == Qt.ControlModifier:
+                    f = self.identifier.identify(x=event.x(), y=event.y(), mode=self.identifier.TopDownStopAtFirst, layerList=[self.plugin.TILayer])[0].mFeature
                     
-                    if feature.id() in self.plugin.crossSectionDict.keys():
-                        self.removeFeature(feature)
+                    if f.id() in self.plugin.crossSectionDict.keys():
+                        self.removeFeature(f.id())
                     else:
-                        self.addFeature(feature,)
-                    
+                        pointf = self.layerToMap(f.geometry().asPoint())
+                        self.addFeature(f, pointf, self.projVec, update=True)
+                elif modifiers == Qt.ShiftModifier:
+                    f = self.identifier.identify(x=event.x(), y=event.y(), mode=self.identifier.TopDownStopAtFirst, layerList=[self.plugin.TILayer])[0].mFeature
+                    self.plugin.getBorelogImage(f)
                 else:
                     self.startPoint = self.toMapCoordinates(event.pos())
                     self.endPoint = self.startPoint
@@ -95,11 +101,13 @@ class TICrossSectionTool(QgsMapToolIdentify):
                         if geom.contains(pointGeom):
                             features.append(f)
 
-                    projVec = self.getProjVec(self.startPoint, self.endPoint) # Projection vector in mapcanvas coordinates
+                    self.projVec = self.getProjVec(self.startPoint, self.endPoint) # Projection vector in mapcanvas coordinates
 
                     for f in features:
                         pointf = self.layerToMap(f.geometry().asPoint()) # PointXY in mapcanvas coordinates
-                        self.addFeature(f, pointf, projVec)
+                        self.addFeature(f, pointf, self.projVec)
+                    
+                    self.updateTable()
         
         elif event.button() == Qt.RightButton:
             self.isEmittingPoint = False
@@ -110,8 +118,20 @@ class TICrossSectionTool(QgsMapToolIdentify):
 
 
     def canvasMoveEvent(self, event):
+        modifiers = event.modifiers()
         if not self.isEmittingPoint:
-            return
+            if  modifiers == Qt.ShiftModifier:
+                if self.isOverrideCursor:
+                    pass
+                else:
+                    self.isOverrideCursor = True
+                    QGuiApplication.setOverrideCursor(Qt.WhatsThisCursor)
+            else:
+                if self.isOverrideCursor:
+                    self.isOverrideCursor = False
+                    QGuiApplication.restoreOverrideCursor()
+                
+            return       
 
         self.endPoint = self.toMapCoordinates(event.pos())
         self.showLine(self.startPoint, self.endPoint)
@@ -190,7 +210,7 @@ class TICrossSectionTool(QgsMapToolIdentify):
         self.plugin.TILayer.selectByIds([f[0].id() for f in features])
         self.plugin.crossSectionDict = features
 
-    def addFeature(self, f: QgsFeature, pointf: QgsPointXY, projVec: QgsVector):
+    def addFeature(self, f: QgsFeature, pointf: QgsPointXY, projVec: QgsVector, update:bool=False):
         fid = f.id()
         vec = pointf  - self.startPoint
 
@@ -206,16 +226,21 @@ class TICrossSectionTool(QgsMapToolIdentify):
         seg.show()
 
         self.orth_segments[fid] = seg
-
         self.plugin.TILayer.select(fid)
-
         self.plugin.crossSectionDict[fid] = (f, d)
+
+        if update:
+            self.updateTable()
+
+
     
-    def removeFeature(self, fid: int):
+    def removeFeature(self, fid: int, updateTab:bool=True):
         self.plugin.TILayer.deselect(fid)
         self.plugin.crossSectionDict.pop(fid)
         seg = self.orth_segments.pop(fid)
         seg.reset()
+        if updateTab:
+            self.updateTable()
 
         
     def removeFeatures(self):
@@ -227,12 +252,19 @@ class TICrossSectionTool(QgsMapToolIdentify):
             seg.reset()
         
         self.orth_segments = {}
-
+        self.plugin.updateTable(reset=True)
+    
+    def updateTable(self):
+        if self.plugin.crossSectionDict:
+            d = {fid:[f['MeasurementPointName'], f['ProjectCode'], round(d,2)] for fid, (f, d) in self.plugin.crossSectionDict.items()}
+            df = pd.DataFrame.from_dict(d, orient='index', columns=['MeasurementPointName', 'ProjectCode', 'Distance']).sort_values('Distance')
+            self.plugin.updateTable(df)
+        else:
+            self.plugin.updateTable(reset=True)
 
 
     def getSelectedFeature(self):
         return self.plugin.TILayer.selectedFeatures()
-
 
     def deactivate(self):
         self.removeFeatures()
@@ -241,7 +273,7 @@ class TICrossSectionTool(QgsMapToolIdentify):
         for seg in self.orth_segments:
             seg.reset()
         
-        QgsMapToolIdentify.deactivate(self)
+        QgsMapTool.deactivate(self)
 
 
     def isZoomTool(self):
@@ -252,3 +284,6 @@ class TICrossSectionTool(QgsMapToolIdentify):
 
     def isEditTool(self):
         return False
+
+
+

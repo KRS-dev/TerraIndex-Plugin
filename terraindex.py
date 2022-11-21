@@ -23,7 +23,7 @@
 """
 from operator import attrgetter
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
-from qgis.PyQt.QtGui import QIcon, QPixmap
+from qgis.PyQt.QtGui import QIcon, QPixmap, QStandardItemModel, QStandardItem
 from qgis.PyQt.QtWidgets import QAction, QGraphicsScene, QGraphicsPixmapItem, QProgressBar, QFileDialog
 from qgis.core import Qgis, QgsProject, QgsVectorLayer, QgsFeature, QgsDataSourceUri
 from qgis.gui import QgsMapTool, QgisInterface
@@ -187,6 +187,7 @@ class TerraIndex:
 
         # Main widget ui reference, is instantiated in run()
         self.dockwidget = None
+        self.table = None
 
     # noinspection PyMethodMayBeStatic
 
@@ -389,6 +390,8 @@ class TerraIndex:
         response = request.request()
 
         if response.status_code is not requests.codes.ok:
+            print(response)
+            print(response.text)
             self.iface.messageBar().pushMessage("Error", response.reason, level=Qgis.Critical)
             response.raise_for_status()
         else:
@@ -401,6 +404,7 @@ class TerraIndex:
             scene = QGraphicsScene()
             scene.addItem(pmitem)
             self.dockwidget.graphicsView.setScene(scene)
+            self.dockwidget.tabWidget.setCurrentIndex(0)
     
     @login
     def getBorelogsPDF(self, features: Iterable[QgsFeature]):
@@ -426,7 +430,8 @@ class TerraIndex:
 
         response = request.request()
         if response.status_code is not requests.codes.ok:
-            
+            print(response)
+            print(response.text)
             self.iface.messageBar().pushMessage("Error", response.reason, level=Qgis.Critical)
             response.raise_for_status()
         else:
@@ -483,14 +488,14 @@ class TerraIndex:
     @login
     def getCrossSectionPDF(self, crossSectionDict: Dict[int, Tuple[QgsFeature, float]]):
 
-        scale = self.dockwidget.SW_crossSection.scale()
+        scale = self.dockwidget.SP_scale.value()
         norm_crossSections = self.scaleCrossSectionDistances(self.sortCrossSection(crossSectionDict), scale)
 
         boreholeid_list = []
         for feature, distance in norm_crossSections.values():
             boreholeid_list.append({'ProjectID': feature['ProjectID'],
                                 'BoreHoleID': feature['MeasurementPointID'],
-                                'Distance': distance
+                                'Distance': int(distance)
                                 })
 
         request = BorelogRequest(self, DrawKind='CrossSection', DrawMode='MultiPage', OutputType='PDF')
@@ -525,7 +530,7 @@ class TerraIndex:
 
     @login
     def requestBoreholeData(self, features: Iterable[QgsFeature]) ->  dict:
-
+        
         boreholeid_list = []
         for feature in features:
             boreholeid_list.append({'ProjectID': feature['ProjectID'],
@@ -545,40 +550,36 @@ class TerraIndex:
         return data
     
     @login
-    def downloadBoreholeData(self, *args):
-
-
-        filename, selectedFilter = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save Borehole Data:"), 'borelogs_data', self.tr('data (*.csv *.xlsx)') )
-
-        if not filename:
-            return
-
+    def showData(self, *args):
         features = self.TILayer.selectedFeatures()
 
         if len(features) > 0:
             features2 = self.sortFeatures(features)
             data = self.requestBoreholeData(features2)
-            
             df = pd.DataFrame(data)
 
             if self.crossSectionDict:
-                self.checkCanvasCRS()
-
+                self.checkCanvasCrs()
                 crossSectionDict2 = self.sortCrossSection(self.crossSectionDict)
-                join_table = [[f['MeasurementPointID'], f['ProjectID'], d] for f, d in self.crossSectionDict.values()]
+                join_table = [[f['MeasurementPointID'], f['ProjectID'], round(d,2)] for f, d in self.crossSectionDict.values()]
                 join_table = pd.DataFrame(data=join_table, columns=['MeasurementPointID', 'ProjectID', 'CrossSectionDistance'])
-
-                print(join_table.tail())
-
                 df = pd.merge(df, join_table, how='left', left_on=['MeasurementPointID', 'ProjectID'], right_on=['MeasurementPointID', 'ProjectID'])
 
-            _, ext = os.path.splitext(filename)
+            self.updateTable(df)
 
-            if ext == '.csv': 
-                print('.csv')
-                df.to_csv(filename, sep=';')
-            elif ext == '.xlsx':
-                df.to_excel(filename)
+    @login
+    def downloadData(self, *args):
+        filename, selectedFilter = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save Borehole Data:"), 'borelogs_data', self.tr('data (*.csv *.xlsx)') )
+        if not filename:
+            return
+        _, ext = os.path.splitext(filename)
+
+        df = self.table._data
+        if ext == '.csv': 
+            print('.csv')
+            df.to_csv(filename, sep=';')
+        elif ext == '.xlsx':
+            df.to_excel(filename)
 
     @login
     def updateLayoutNames(self):
@@ -607,40 +608,25 @@ class TerraIndex:
         else:
             features2 = self.sortFeatures(features)
             self.getBorelogsPDF(features2) 
-
-    @staticmethod
-    def sortFeatures(features: Iterable[QgsFeature]) -> List[QgsFeature]:
-
-        def get_projectID(f):
-            return f['ProjectID']
-
-        def get_pointID(f):
-            return f['MeasurementPointID'] 
-
-        def sortProjectPoint(f):
-            return (get_projectID(f), get_pointID(f)) 
-
-        features2 = sorted(features, key=sortProjectPoint) 
-
-        return features2
     
     def checkCanvasCrs(self):
-        crs = self.iface.mapCanvas().destinationCrs()
+        crs = self.iface.mapCanvas().mapSettings().destinationCrs()
         if not crs.authid() == 'EPSG:28992':
             self.iface.messageBar().pushMessage(
                 "CRS warning", 
                 "The project CRS is not EPSG:28992. Note that the crosssectional distance will be calculated in the project CRS:{}".format(crs.authid()), 
                 level=Qgis.Warning
                 )
-
-    @staticmethod
-    def checkRequiredFields(feature: QgsFeature) -> bool:
-
-        req = ['ProjectID', 'MeasurementPointID']
-        fields = [field.name() for field in feature.fields()]
-
-        return set(req).issubset(fields)
-
+    
+    def updateTable(self, df: pd.DataFrame=None, reset=False):
+        if not reset:
+            self.table = PandasTableModel(df)
+            self.dockwidget.tableView.setModel(self.table)
+            self.dockwidget.tableView.resizeColumnsToContents()
+            self.dockwidget.tabWidget.setCurrentIndex(1)
+        else:
+            if self.table:
+                self.table.clear()
 
     def run(self):
         """Run method that loads and starts the plugin"""
@@ -662,7 +648,8 @@ class TerraIndex:
             
             self.dockwidget.PB_downloadpdf.clicked.connect(self.downloadPDF)
             self.dockwidget.PB_updateLayouts.pressed.connect(self.updateLayoutNames)
-            self.dockwidget.PB_downloaddata.clicked.connect(self.downloadBoreholeData)
+            self.dockwidget.PB_showdata.clicked.connect(self.showData)
+            self.dockwidget.PB_downloaddata.clicked.connect(self.downloadData)
 
             setMapToolCrossSection = functools.partial(self.setMapTool, newMapTool=TICrossSectionTool)
             self.dockwidget.PB_crosssection.clicked.connect(setMapToolCrossSection)
@@ -689,3 +676,56 @@ class TerraIndex:
 
 
 
+    @staticmethod
+    def sortFeatures(features: Iterable[QgsFeature]) -> List[QgsFeature]:
+
+        def get_projectID(f):
+            return f['ProjectID']
+
+        def get_pointID(f):
+            return f['MeasurementPointID'] 
+
+        def sortProjectPoint(f):
+            return (get_projectID(f), get_pointID(f)) 
+
+        features2 = sorted(features, key=sortProjectPoint) 
+
+        return features2
+
+    @staticmethod
+    def checkRequiredFields(feature: QgsFeature) -> bool:
+
+        req = ['ProjectID', 'MeasurementPointID']
+        fields = [field.name() for field in feature.fields()]
+
+        return set(req).issubset(fields)
+
+class PandasTableModel(QStandardItemModel):
+    '''Helper class for converting Pandas Dataframe to a Qt Table model.
+    https://stackoverflow.com/questions/31475965/fastest-way-to-populate-qtableview-from-pandas-data-frame
+    '''    
+    def __init__(self, data:pd.DataFrame, parent=None):
+        QStandardItemModel.__init__(self, parent)
+        self._data = data
+        for col in data.columns:
+            data_col = [QStandardItem("{}".format(x)) for x in data[col].values]
+            self.appendColumn(data_col)
+        return
+
+    def rowCount(self, parent=None) -> int:
+        return len(self._data.values)
+
+    def columnCount(self, parent=None) -> int:
+        return self._data.columns.size
+
+    def headerData(self, x, orientation, role):
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return self._data.columns[x]
+        if orientation == Qt.Vertical and role == Qt.DisplayRole:
+            return self._data.index[x]
+        return None
+    
+    # def clear(self):
+    #     self.layoutAboutToBeChanged.emit()
+    #     self._data.drop(self._data.index,inplace=True) 
+    #     self.layoutChanged.emit()

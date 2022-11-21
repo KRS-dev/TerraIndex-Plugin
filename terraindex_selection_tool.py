@@ -2,7 +2,7 @@ from qgis.gui import QgsMapToolIdentify, QgsRubberBand
 from qgis.core import QgsHtmlAnnotation, QgsSvgAnnotation, QgsTextAnnotation, QgsPointXY, QgsProject, QgsPointXY, QgsRectangle, QgsWkbTypes
 
 from qgis.PyQt.QtGui import QTextDocument
-from qgis.PyQt.QtCore import QSizeF
+from qgis.PyQt.QtCore import QSizeF, Qt
 
 from collections import OrderedDict
 
@@ -17,16 +17,11 @@ class TISelectionTool(QgsMapToolIdentify):
         self.iface = iface
         self.plugin = plugin
 
-        self.annotationManager = QgsProject.instance().annotationManager()
-
-
         self.isEmittingPoint = False
         self.rubberband = QgsRubberBand(self.canvas(), geometryType=QgsWkbTypes.PolygonGeometry)
 
-        self.selected_features = None
-
+        self.annotationManager = QgsProject.instance().annotationManager()
         self.annotation_features = OrderedDict()
-        # QApplication.instance().setOverrideCursor(Qt.ArrowCursor)
 
 
     def canvasPressEvent(self, event):
@@ -44,7 +39,7 @@ class TISelectionTool(QgsMapToolIdentify):
         self.showRect(self.startPoint, self.endPoint)
 
     def canvasReleaseEvent(self, event):
-        
+        modifiers = event.modifiers()
         
         self.isEmittingPoint = False
 
@@ -54,30 +49,38 @@ class TISelectionTool(QgsMapToolIdentify):
                                         layerList=[self.plugin.TILayer], 
                                         mode=self.TopDownStopAtFirst)
 
-            if len(found_features) > 0:
-                layer = found_features[0].mLayer
-                feature = found_features[0].mFeature
-                self.unsetSelectedFeatures()
-                self.setSelectedFeatures([feature])
+            if modifiers == Qt.ControlModifier:
+                if len(found_features) > 0:
+                    f = found_features[0].mFeature
+                    if f.id() in self.plugin.TILayer.selectedFeatureIds():
+                        self.removeFeature(f)
+                    else:
+                        self.addFeature(f)
+                else:
+                    return
+            elif len(found_features) > 0:
+                # layer = found_features[0].mLayer
+                f = found_features[0].mFeature
+                self.deselectFeatures()
+                self.addFeature(f)
                 #self.addAnnotation(feature, layer) 
-
-                self.plugin.getBorelogImage(feature)
+                self.plugin.getBorelogImage(f)
             else:
-                self.unsetSelectedFeatures()
+
+                self.deselectFeatures()
         # do something when a selection is made
         else:
             r = self.rectangle()
 
-            layer = self.plugin.TILayer
-
-
-            self.unsetSelectedFeatures()
+            if not event.modifiers() == Qt.ControlModifier:
+                self.deselectFeatures()
 
             if r is not None:
                 #builds bbRect and select from layer, adding selection
-                bbRect = self.canvas().mapSettings().mapToLayerCoordinates(layer, r)
-                features = layer.getFeatures(bbRect)
-                self.setSelectedFeatures([f for f in features])
+                bbRect = self.canvas().mapSettings().mapToLayerCoordinates(self.plugin.TILayer, r)
+                features = self.plugin.TILayer.getFeatures(bbRect)
+                for f in features:
+                    self.addFeature(f)
             
             self.rubberband.hide()
             
@@ -108,10 +111,16 @@ class TISelectionTool(QgsMapToolIdentify):
             return None
         return QgsRectangle(self.startPoint, self.endPoint)
 
+    def addFeature(self, feature):
+        self.plugin.TILayer.select(feature.id())
+    
+    def removeFeature(self, feature):
+        self.plugin.TILayer.deselect(feature.id())
+
     def setSelectedFeatures(self, features):
         self.plugin.TILayer.selectByIds([f.id() for f in features])
         
-    def unsetSelectedFeatures(self):
+    def deselectFeatures(self):
         self.plugin.TILayer.removeSelection()
 
     def getSelectedFeature(self):
