@@ -117,8 +117,6 @@ def layoutTemplatesRequest(TIPlugin, type = 2):
     for template in templatelist:
 
         TemplateType = template.find('.//ns3:TemplateType', ns_res)
-
-        
         if int(TemplateType.text) == type or type is None:
             TemplateID = template.find('.//ns3:TemplateID', ns_res)
             TemplateName = template.find('.//ns3:TemplateName', ns_res)

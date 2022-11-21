@@ -154,7 +154,6 @@ class BorelogRequest:
             for key, val in borehole_dict.items():
                 a = ET.SubElement(b, "{" + ns['b'] + "}" + key)
                 a.text = val
-                print(key, val)
 
 
         self.xml = ET.tostring(root)

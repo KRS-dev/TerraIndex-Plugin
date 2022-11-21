@@ -501,7 +501,6 @@ class TerraIndex:
         request = BorelogRequest(self, DrawKind='CrossSection', DrawMode='MultiPage', OutputType='PDF')
 
         for d in boreholeid_list:
-            print(d)
             request.addBorehole(**d)
 
         filename, _ = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save PDF:"), 'CrossSection', self.tr('pdf (*.pdf)') )
