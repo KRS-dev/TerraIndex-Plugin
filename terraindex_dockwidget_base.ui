@@ -11,11 +11,11 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>TerraIndex Plug-in</string>
+   <string/>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="5" column="0">
+    <item row="6" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="layoutDirection">
        <enum>Qt::LeftToRight</enum>
@@ -27,7 +27,7 @@
        <enum>QTabWidget::Rounded</enum>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <property name="documentMode">
        <bool>false</bool>
@@ -135,79 +135,130 @@
       </widget>
      </widget>
     </item>
-    <item row="0" column="0">
-     <layout class="QHBoxLayout" name="horizontalLayout_3">
-      <property name="spacing">
-       <number>10</number>
+    <item row="3" column="0">
+     <widget class="QGroupBox" name="PDFgroupBox">
+      <property name="title">
+       <string>Export</string>
       </property>
-      <item>
-       <widget class="QComboBox" name="CB_layout">
-        <property name="toolTip">
-         <string>Layout Templates</string>
-        </property>
-        <property name="whatsThis">
-         <string>Layout Templates</string>
-        </property>
-        <property name="accessibleName">
-         <string>Template</string>
-        </property>
-        <property name="editable">
-         <bool>false</bool>
-        </property>
-        <property name="currentText">
-         <string/>
-        </property>
-        <property name="frame">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="PB_updateLayouts">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string/>
-        </property>
-        <property name="icon">
-         <iconset>
-          <normaloff>icon/reload.gif</normaloff>icon/reload.gif</iconset>
-        </property>
-        <property name="checkable">
-         <bool>false</bool>
-        </property>
-        <property name="autoRepeat">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item row="1" column="0">
-     <widget class="QGroupBox" name="">
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <property name="alignment">
+       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+      </property>
+      <property name="flat">
+       <bool>true</bool>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_3">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
        <property name="topMargin">
-        <number>1</number>
+        <number>3</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
        </property>
        <property name="bottomMargin">
-        <number>10</number>
+        <number>3</number>
        </property>
-       <item>
-        <widget class="QPushButton" name="PB_boreprofile">
+       <item row="0" column="3">
+        <widget class="QLabel" name="label_2">
          <property name="text">
-          <string>BoreprofileTool</string>
+          <string>Distance Scaling:</string>
          </property>
-         <property name="icon">
-          <iconset>
-           <normaloff>icon/mActionIdentify.png</normaloff>icon/mActionIdentify.png</iconset>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+         <property name="buddy">
+          <cstring>PDFgroupBox</cstring>
          </property>
         </widget>
        </item>
-       <item>
+       <item row="0" column="4">
+        <widget class="QDoubleSpinBox" name="SP_scale">
+         <property name="minimum">
+          <double>0.050000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>100.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.050000000000000</double>
+         </property>
+         <property name="value">
+          <double>1.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QPushButton" name="PB_downloadpdf">
+         <property name="text">
+          <string>Export Boreprofiles as PDF</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QPushButton" name="PB_showdata">
+         <property name="text">
+          <string>Show Boreprofile Data</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="5">
+        <widget class="Line" name="line">
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+         <property name="lineWidth">
+          <number>1</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1" colspan="2">
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Preferred</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="2" column="0">
+     <widget class="QGroupBox" name="groupBox">
+      <property name="title">
+       <string>Tools</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_5">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>3</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <property name="horizontalSpacing">
+        <number>3</number>
+       </property>
+       <item row="0" column="1">
         <spacer name="horizontalSpacer_2">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -223,7 +274,7 @@
          </property>
         </spacer>
        </item>
-       <item>
+       <item row="0" column="2" rowspan="2">
         <widget class="QFrame" name="crosssection">
          <property name="frameShape">
           <enum>QFrame::StyledPanel</enum>
@@ -233,16 +284,16 @@
            <enum>QLayout::SetDefaultConstraint</enum>
           </property>
           <property name="leftMargin">
-           <number>5</number>
+           <number>0</number>
           </property>
           <property name="topMargin">
-           <number>5</number>
+           <number>0</number>
           </property>
           <property name="rightMargin">
-           <number>5</number>
+           <number>0</number>
           </property>
           <property name="bottomMargin">
-           <number>5</number>
+           <number>0</number>
           </property>
           <item>
            <widget class="QPushButton" name="PB_crosssection">
@@ -271,7 +322,7 @@
                <string>Width:</string>
               </property>
               <property name="alignment">
-               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               <set>Qt::AlignCenter</set>
               </property>
              </widget>
             </item>
@@ -305,72 +356,129 @@
          </layout>
         </widget>
        </item>
+       <item row="0" column="0">
+        <widget class="QPushButton" name="PB_boreprofile">
+         <property name="text">
+          <string>BoreprofileTool</string>
+         </property>
+         <property name="icon">
+          <iconset>
+           <normaloff>icon/mActionIdentify.png</normaloff>icon/mActionIdentify.png</iconset>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
     </item>
-    <item row="2" column="0">
-     <widget class="QGroupBox" name="PDFgroupBox">
-      <layout class="QGridLayout" name="gridLayout_3">
-       <item row="0" column="2">
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeType">
-          <enum>QSizePolicy::Preferred</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="0" column="3">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Distance Scaling:</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-         <property name="buddy">
-          <cstring>PDFgroupBox</cstring>
-         </property>
-        </widget>
-       </item>
+    <item row="1" column="0">
+     <widget class="QGroupBox" name="">
+      <property name="title">
+       <string notr="true">Template Layout</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_4">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>3</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>3</number>
+       </property>
        <item row="0" column="0">
-        <widget class="QPushButton" name="PB_downloadpdf">
-         <property name="text">
-          <string>Export Boreprofiles as PDF</string>
+        <widget class="QComboBox" name="CB_layout">
+         <property name="toolTip">
+          <string>Layout Templates</string>
+         </property>
+         <property name="whatsThis">
+          <string>Layout Templates</string>
+         </property>
+         <property name="accessibleName">
+          <string>Template</string>
+         </property>
+         <property name="editable">
+          <bool>false</bool>
+         </property>
+         <property name="currentText">
+          <string/>
+         </property>
+         <property name="duplicatesEnabled">
+          <bool>false</bool>
+         </property>
+         <property name="frame">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
-        <widget class="QPushButton" name="PB_showdata">
+       <item row="0" column="1">
+        <widget class="QPushButton" name="PB_updateLayouts">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="text">
-          <string>Show Boreprofile Data</string>
+          <string/>
          </property>
-        </widget>
-       </item>
-       <item row="0" column="4">
-        <widget class="QDoubleSpinBox" name="SP_scale">
-         <property name="minimum">
-          <double>0.050000000000000</double>
+         <property name="icon">
+          <iconset>
+           <normaloff>icon/reload.gif</normaloff>icon/reload.gif</iconset>
          </property>
-         <property name="maximum">
-          <double>100.000000000000000</double>
+         <property name="checkable">
+          <bool>false</bool>
          </property>
-         <property name="singleStep">
-          <double>0.050000000000000</double>
-         </property>
-         <property name="value">
-          <double>1.000000000000000</double>
+         <property name="autoRepeat">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
       </layout>
+     </widget>
+    </item>
+    <item row="0" column="0">
+     <widget class="QLabel" name="label_3">
+      <property name="font">
+       <font>
+        <family>Noto Sans CJK HK</family>
+        <pointsize>14</pointsize>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::NoFrame</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Plain</enum>
+      </property>
+      <property name="lineWidth">
+       <number>0</number>
+      </property>
+      <property name="midLineWidth">
+       <number>0</number>
+      </property>
+      <property name="text">
+       <string>TerraIndex Plug-in</string>
+      </property>
+      <property name="textFormat">
+       <enum>Qt::PlainText</enum>
+      </property>
+      <property name="scaledContents">
+       <bool>true</bool>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+      <property name="margin">
+       <number>1</number>
+      </property>
      </widget>
     </item>
    </layout>

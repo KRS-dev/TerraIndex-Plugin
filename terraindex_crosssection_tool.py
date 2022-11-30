@@ -56,16 +56,19 @@ class TICrossSectionTool(QgsMapTool):
             if not self.isEmittingPoint:
                 modifiers = event.modifiers()
                 if modifiers == Qt.ControlModifier:
-                    f = self.identifier.identify(x=event.x(), y=event.y(), mode=self.identifier.TopDownStopAtFirst, layerList=[self.plugin.TILayer])[0].mFeature
-                    
-                    if f.id() in self.plugin.crossSectionDict.keys():
-                        self.removeFeature(f.id())
-                    else:
-                        pointf = self.layerToMap(f.geometry().asPoint())
-                        self.addFeature(f, pointf, self.projVec, update=True)
+                    f = self.identifier.identify(x=event.x(), y=event.y(), mode=self.identifier.TopDownStopAtFirst, layerList=[self.plugin.TILayer])
+                    if f:
+                        f[0].mFeature
+                        if f.id() in self.plugin.crossSectionDict.keys():
+                            self.removeFeature(f.id())
+                        else:
+                            pointf = self.layerToMap(f.geometry().asPoint())
+                            self.addFeature(f, pointf, self.projVec, update=True)
                 elif modifiers == Qt.ShiftModifier:
-                    f = self.identifier.identify(x=event.x(), y=event.y(), mode=self.identifier.TopDownStopAtFirst, layerList=[self.plugin.TILayer])[0].mFeature
-                    self.plugin.getBorelogImage(f)
+                    f = self.identifier.identify(x=event.x(), y=event.y(), mode=self.identifier.TopDownStopAtFirst, layerList=[self.plugin.TILayer])
+                    if f:
+                        f = f[0].mFeature
+                        self.plugin.getBorelogImage(f)
                 else:
                     self.startPoint = self.toMapCoordinates(event.pos())
                     self.endPoint = self.startPoint
@@ -125,7 +128,7 @@ class TICrossSectionTool(QgsMapTool):
                     pass
                 else:
                     self.isOverrideCursor = True
-                    QGuiApplication.setOverrideCursor(Qt.WhatsThisCursor)
+                    QGuiApplication.setOverrideCursor(Qt.ArrowCursor)
             else:
                 if self.isOverrideCursor:
                     self.isOverrideCursor = False

@@ -591,6 +591,7 @@ class TerraIndex:
     def getLayout(self, id: int) -> str:
         return layoutDataRequest(self, TemplateID=id)
     
+    @login
     def downloadPDF(self):
         
         features = self.TILayer.selectedFeatures()
