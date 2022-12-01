@@ -9,6 +9,7 @@ import functools
 from qgis.PyQt.QtWidgets import QProgressDialog
 
 from typing import List, Tuple, Dict
+from qgis.core import Qgis
 
 # Namespaces for the SOAP request
 ns = {
@@ -112,10 +113,15 @@ class BorelogRequest:
             PageOrientation = layout.split('PageOrientation=')[
                 1].split(r'\n')[0]
             if not PageOrientation == 'poLandscape':
+<<<<<<< HEAD
                 print('pageorientation landscape')
                 # load other layout that is in landscape, give off warning
             else:
                 print('po did not work')
+=======
+                self.iface.messageBar().pushMessage('Warning', 'Layouts in portretmodus zijn niet aan te raden voor dwarsdoorsnedes.', level=Qgis.Warning)
+                #TODO load other layout that is in landscape, give off warning
+>>>>>>> 7e3f72ebd2b98ae53311c05ca7c2d7548719fbad
 
     def setXMLparameters(self):
 

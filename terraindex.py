@@ -74,8 +74,6 @@ def login(func):
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
         
-        print(args, kwargs)
-
         def credentialPull(self, dialog, func):
             success, results, username, licensenumber, applicationcode = dialog.getToken()
 
@@ -318,8 +316,6 @@ class TerraIndex:
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
-
-        print('Closing TerraIndex')
 
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
@@ -576,7 +572,6 @@ class TerraIndex:
 
         df = self.table._data
         if ext == '.csv': 
-            print('.csv')
             df.to_csv(filename, sep=';')
         elif ext == '.xlsx':
             df.to_excel(filename)
@@ -592,6 +587,7 @@ class TerraIndex:
     def getLayout(self, id: int) -> str:
         return layoutDataRequest(self, TemplateID=id)
     
+    @login
     def downloadPDF(self):
         
         features = self.TILayer.selectedFeatures()
