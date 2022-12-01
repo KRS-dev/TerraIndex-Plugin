@@ -43,6 +43,7 @@ from .terraindex_layouts_request import layoutTemplatesRequest, layoutDataReques
 import os.path
 import functools
 import time
+import json
 
 # Import for requests
 import requests, base64
@@ -75,7 +76,9 @@ def login(func):
     def wrapper(self, *args, **kwargs):
         
         def credentialPull(self, dialog, func):
-            success, results, username, licensenumber, applicationcode = dialog.getToken()
+
+            self.loginWindowIsActive = False
+            success, results, username, pincode, licensenumber, applicationcode = dialog.getToken()
 
             if success is 1: ## clicked ok
 
@@ -86,41 +89,44 @@ def login(func):
                     self.errormessage = ''
 
                     self.username = username
+                    self.pincode = pincode
                     self.licensenumber = licensenumber
                     self.applicationcode = applicationcode
 
                     self.authorisationBool = True
-                    # evaluate the actual function
 
+                    
+
+                    # evaluate the actual function
                     return func(self, *args, **kwargs)
                 else:
-                    ## connection failed
+                    ## login failed
+                    
+                    error_json = results['Message']
+                    error_json = error_json.split(':', 1)[1]
+                    error = json.loads(error_json)
+                    
+                    errormessage = '{}: {}'.format(error['error'], error['error_description'])
+                    self.errormessage = errormessage
 
-
-                    self.errormessage = results['Message']
-                    dialog.message.setText(self.errormessage)
-
-
-                    dialog.open()
+                    setupCredentialsDialog(self, username=username, password=pincode, message=self.errormessage)
 
 
             else: # Closed dialog any other way
                 pass
 
         
-        def setupCredentialsDialog(self):
-
-            dialog = TerraIndexLoginDialog(message = self.errormessage)
-            
+        def setupCredentialsDialog(self, **kwargs):
+            self.loginWindowIsActive = True
+            dialog = TerraIndexLoginDialog(**kwargs)
             partialCredPull = functools.partial(credentialPull, self=self, dialog=dialog, func=func)
-
             dialog.finished.connect(partialCredPull)
-
-            dialog.open()
+            dialog.exec_()
         
-        # Check if we have a token or the token expired (~1 hour)
+        # Check if we have a token or if the token expired (~1 hour)
         if self.token is None or time.time() - self.session_start_t > 3580:
-            setupCredentialsDialog(self)
+            if not self.loginWindowIsActive:
+                setupCredentialsDialog(self, username=self.username, password=self.pincode, message=self.errormessage)
         else:
             return func(self, *args, **kwargs)
 
@@ -168,13 +174,14 @@ class TerraIndex:
         self.toolbar.setObjectName(u'TerraIndex')
 
         self.TILayer = None
-      
         self.token = None
         self.session_start_t = 0
         self.username = None
+        self.pincode = None
         self.licensenumber = None
         self.applicationcode = None
         self.errormessage = None
+        self.authorisationBool = False
 
         self.map_tool = None
 
@@ -183,6 +190,7 @@ class TerraIndex:
         self.crossSectionDict = {}
 
         self.pluginIsActive = False
+        self.loginWindowIsActive = False
 
         # Main widget ui reference, is instantiated in run()
         self.dockwidget = None
@@ -287,30 +295,32 @@ class TerraIndex:
             callback=self.run,
             parent=self.iface.mainWindow())
 
-    def initTILayer(self):
-
-        #TO-DO: not to hardcode the username and password here
-        uri = r"user='skemp' password='ikZKBDoVJv' maxNumFeatures='2000' pagingEnabled='true' preferCoordinatesForWfsT11='false' restrictToRequestBBOX='1' srsname='EPSG:4326' typename='ti-workspace:AllProjects_MeasurementPoints_pnt' url='https://gwr.geoserver.terraindex.com/geoserver/ti-workspace/ows' version='auto'"
-
+    def initTILayer(self, *args):
+        
         layers = QgsProject.instance().mapLayers()
         TILayer = None
 
         for layer in layers.values():
-
             src = QgsDataSourceUri(layer.source())
-
-
             if src.hasParam('url') and src.hasParam('typename'):
                 if src.param('url') == 'https://gwr.geoserver.terraindex.com/geoserver/ti-workspace/ows' and src.param('typename') == 'ti-workspace:AllProjects_MeasurementPoints_pnt':
-                    TILayer = layer
+                    self.TILayer = layer
         
-        if TILayer is None:
+        if TILayer is None and self.authorisationBool:
+            self.createTILayer()
+
+
+    
+    @login
+    def createTILayer(self, *args):
+        if self.TILayer is None:
+            uri = "user='{}' password='{}' pagingEnabled='false' preferCoordinatesForWfsT11='false' restrictToRequestBBOX='1' srsname='EPSG:4326' typename='ti-workspace:AllProjects_MeasurementPoints_pnt' url='https://gwr.geoserver.terraindex.com/geoserver/ti-workspace/ows' version='auto'"
+            uri = uri.format(self.username, self.pincode)
             TILayer = QgsVectorLayer(uri,'AllProjects_MeasurementPoints_pnt', 'WFS')
             TILayer.loadNamedStyle(os.path.join(self.plugin_dir, 'data', 'TerraIndexLayerStyle.qml'))
             QgsProject.instance().addMapLayer(TILayer)
+            self.TILayer = TILayer
 
-        self.TILayer = TILayer
-            
 
     # --------------------------------------------------------------------------
 
@@ -587,7 +597,6 @@ class TerraIndex:
     def getLayout(self, id: int) -> str:
         return layoutDataRequest(self, TemplateID=id)
     
-    @login
     def downloadPDF(self):
         
         features = self.TILayer.selectedFeatures()
@@ -651,7 +660,7 @@ class TerraIndex:
             self.dockwidget.PB_crosssection.clicked.connect(setMapToolCrossSection)
             setMapToolSelection = functools.partial(self.setMapTool, newMapTool=TISelectionTool)
             self.dockwidget.PB_boreprofile.clicked.connect(setMapToolSelection)
-
+ 
             # self.dockwidget.CB_layout.activated.connect(self.updateLayouts)
             # Load the layouts
             if self.layoutsDict == {}:
@@ -660,10 +669,10 @@ class TerraIndex:
 
             # initialize TISelectionTool
             self.setMapTool()
+            self.dockwidget.GB_SP_scale.setEnabled(False) # Disables the distance scaling spinbox
 
-            # Import TerraIndex Measurement point layer
             self.initTILayer()
-
+            self.dockwidget.PB_TILayer.clicked.connect(self.createTILayer)
 
             # show the dockwidget
             # TODO: fix to allow choice of dock location

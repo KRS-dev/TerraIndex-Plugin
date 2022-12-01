@@ -2,7 +2,7 @@ from typing import List, Tuple, Union
 from qgis.gui import QgsRubberBand, QgsMapToolIdentify, QgsMapTool, QgisInterface, QgsMapMouseEvent
 from qgis.core import  QgsPointXY, QgsProject, QgsPointXY, QgsRectangle, QgsWkbTypes, QgsGeometry, QgsLineString, QgsCoordinateTransform, QgsVector, QgsFeature
 
-from qgis.PyQt.QtGui import QTextDocument, QColor, QStandardItemModel
+from qgis.PyQt.QtGui import QTextDocument, QColor, QStandardItemModel, QGuiApplication 
 from qgis.PyQt.QtCore import QSizeF, Qt
 
 from collections import OrderedDict
@@ -35,6 +35,7 @@ class TICrossSectionTool(QgsMapTool):
         
         self.thickness = self.plugin.dockwidget.SB_crosssectionWidth.value()
         self.plugin.dockwidget.SB_crosssectionWidth.valueChanged.connect(self.setThickness)
+        self.plugin.dockwidget.GB_SP_scale.setEnabled(True)
 
         self.orth_segments = {} # dictionary of QgsRubberBands to keep track of the orthogonal segments
 
@@ -58,7 +59,7 @@ class TICrossSectionTool(QgsMapTool):
                 if modifiers == Qt.ControlModifier:
                     f = self.identifier.identify(x=event.x(), y=event.y(), mode=self.identifier.TopDownStopAtFirst, layerList=[self.plugin.TILayer])
                     if f:
-                        f[0].mFeature
+                        f = f[0].mFeature
                         if f.id() in self.plugin.crossSectionDict.keys():
                             self.removeFeature(f.id())
                         else:
@@ -128,7 +129,7 @@ class TICrossSectionTool(QgsMapTool):
                     pass
                 else:
                     self.isOverrideCursor = True
-                    QGuiApplication.setOverrideCursor(Qt.ArrowCursor)
+                    QGuiApplication.setOverrideCursor(Qt.WhatsThisCursor)
             else:
                 if self.isOverrideCursor:
                     self.isOverrideCursor = False
@@ -273,6 +274,7 @@ class TICrossSectionTool(QgsMapTool):
         self.removeFeatures()
         self.rubberband.reset()
         self.bufferband.reset()
+        self.plugin.dockwidget.GB_SP_scale.setEnabled(False)
         for seg in self.orth_segments:
             seg.reset()
         

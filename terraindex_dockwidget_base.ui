@@ -27,7 +27,7 @@
        <enum>QTabWidget::Rounded</enum>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <property name="documentMode">
        <bool>false</bool>
@@ -127,7 +127,7 @@
         <item>
          <widget class="QPushButton" name="PB_downloaddata">
           <property name="text">
-           <string>Download .csv</string>
+           <string>Download as .csv .xlsx</string>
           </property>
          </widget>
         </item>
@@ -144,7 +144,7 @@
        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
       </property>
       <property name="flat">
-       <bool>true</bool>
+       <bool>false</bool>
       </property>
       <layout class="QGridLayout" name="gridLayout_3">
        <property name="leftMargin">
@@ -159,50 +159,7 @@
        <property name="bottomMargin">
         <number>3</number>
        </property>
-       <item row="0" column="3">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Distance Scaling:</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-         <property name="buddy">
-          <cstring>PDFgroupBox</cstring>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="4">
-        <widget class="QDoubleSpinBox" name="SP_scale">
-         <property name="minimum">
-          <double>0.050000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>100.000000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>0.050000000000000</double>
-         </property>
-         <property name="value">
-          <double>1.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QPushButton" name="PB_downloadpdf">
-         <property name="text">
-          <string>Export Boreprofiles as PDF</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QPushButton" name="PB_showdata">
-         <property name="text">
-          <string>Show Boreprofile Data</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0" colspan="5">
+       <item row="1" column="0" colspan="6">
         <widget class="Line" name="line">
          <property name="frameShadow">
           <enum>QFrame::Sunken</enum>
@@ -212,6 +169,26 @@
          </property>
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QPushButton" name="PB_downloadpdf">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Export selected measurements points as TerraIndex boreprofiles in a PDF. &lt;/p&gt;&lt;p&gt;In case a crosssection is selected the boreprofiles will be automatically spaced relative to the distances*scaling on the crosssectional line.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Export Boreprofiles as PDF</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QPushButton" name="PB_showdata">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show the tabulated data of the boreprofiles from the selected TerraIndex measurement points.&lt;/p&gt;&lt;p&gt;Crosssectional distances will be append to the table.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Show Boreprofile Data</string>
          </property>
         </widget>
        </item>
@@ -230,6 +207,68 @@
           </size>
          </property>
         </spacer>
+       </item>
+       <item row="0" column="3" colspan="3">
+        <widget class="QFrame" name="GB_SP_scale">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="toolTip">
+          <string>Increase/Decreases the spacing between boreprofiles in the PDF by a set amount.</string>
+         </property>
+         <property name="autoFillBackground">
+          <bool>false</bool>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="label_2">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="text">
+             <string>Distance Scaling:</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="SP_scale">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="readOnly">
+             <bool>false</bool>
+            </property>
+            <property name="minimum">
+             <double>0.050000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>100.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.050000000000000</double>
+            </property>
+            <property name="value">
+             <double>1.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -297,8 +336,11 @@
           </property>
           <item>
            <widget class="QPushButton" name="PB_crosssection">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tool to create crosssections.&lt;br/&gt;&lt;/p&gt;&lt;p&gt;To create a crosssectional line and select surrounding measurement points:&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;First Click&lt;/span&gt;: Starting point of your crosssection.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Second Click&lt;/span&gt;: End point of your crosssection.&lt;/p&gt;&lt;p&gt;To modify the selection:&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Ctrl Click&lt;/span&gt;: Select/Deselect measurement point.&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Not sure which points to select?&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Shift Click&lt;/span&gt;: Show boreprofile for the selected TerraIndex measurement point.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="text">
-             <string>CrossSection Tool</string>
+             <string>Crosssection Tool</string>
             </property>
             <property name="default">
              <bool>false</bool>
@@ -306,60 +348,68 @@
            </widget>
           </item>
           <item>
-           <layout class="QGridLayout" name="gridLayout_2">
-            <property name="topMargin">
-             <number>0</number>
+           <widget class="QWidget" name="" native="true">
+            <property name="toolTip">
+             <string>Specify buffer width around the crosssectional line.</string>
             </property>
-            <item row="0" column="0">
-             <widget class="QLabel" name="label">
-              <property name="frameShape">
-               <enum>QFrame::NoFrame</enum>
-              </property>
-              <property name="frameShadow">
-               <enum>QFrame::Plain</enum>
-              </property>
-              <property name="text">
-               <string>Width:</string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="1">
-             <widget class="QgsSpinBox" name="SB_crosssectionWidth">
-              <property name="minimumSize">
-               <size>
-                <width>60</width>
-                <height>20</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>200</width>
-                <height>16777215</height>
-               </size>
-              </property>
-              <property name="minimum">
-               <number>1</number>
-              </property>
-              <property name="maximum">
-               <number>100</number>
-              </property>
-              <property name="value">
-               <number>10</number>
-              </property>
-             </widget>
-            </item>
-           </layout>
+            <layout class="QGridLayout" name="gridLayout_2">
+             <property name="topMargin">
+              <number>1</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label">
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="frameShadow">
+                <enum>QFrame::Plain</enum>
+               </property>
+               <property name="text">
+                <string>Width:</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QgsSpinBox" name="SB_crosssectionWidth">
+               <property name="minimumSize">
+                <size>
+                 <width>60</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>200</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>100</number>
+               </property>
+               <property name="value">
+                <number>10</number>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
           </item>
          </layout>
         </widget>
        </item>
        <item row="0" column="0">
         <widget class="QPushButton" name="PB_boreprofile">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Boreprofile selection and identification tool.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Single click&lt;/span&gt;: Shows boreprofile for selected TerraIndex point. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Drag click&lt;/span&gt;: Select multiple TerraIndex points.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
-          <string>BoreprofileTool</string>
+          <string>Boreprofile Tool</string>
          </property>
          <property name="icon">
           <iconset>
@@ -371,9 +421,9 @@
      </widget>
     </item>
     <item row="1" column="0">
-     <widget class="QGroupBox" name="">
+     <widget class="QGroupBox" name="groupBox">
       <property name="title">
-       <string notr="true">Template Layout</string>
+       <string notr="true">Layout Template</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -391,6 +441,32 @@
        <property name="bottomMargin">
         <number>3</number>
        </property>
+       <item row="0" column="1">
+        <widget class="QPushButton" name="PB_updateLayouts">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="toolTip">
+          <string>Refresh the Templates from the TerraIndex Web.</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="icon">
+          <iconset>
+           <normaloff>icon/reload.gif</normaloff>icon/reload.gif</iconset>
+         </property>
+         <property name="checkable">
+          <bool>false</bool>
+         </property>
+         <property name="autoRepeat">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="0">
         <widget class="QComboBox" name="CB_layout">
          <property name="toolTip">
@@ -416,26 +492,35 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="1">
-        <widget class="QPushButton" name="PB_updateLayouts">
+       <item row="0" column="3">
+        <widget class="QPushButton" name="PB_TILayer">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
+         <property name="minimumSize">
+          <size>
+           <width>50</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>150</width>
+           <height>16777215</height>
+          </size>
+         </property>
          <property name="text">
-          <string/>
+          <string>Import WFS Layer</string>
          </property>
-         <property name="icon">
-          <iconset>
-           <normaloff>icon/reload.gif</normaloff>icon/reload.gif</iconset>
-         </property>
-         <property name="checkable">
-          <bool>false</bool>
-         </property>
-         <property name="autoRepeat">
-          <bool>true</bool>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="Line" name="line_2">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
          </property>
         </widget>
        </item>

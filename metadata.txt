@@ -6,9 +6,9 @@
 name=TerraIndex
 qgisMinimumVersion=3.0
 description=Links geotechnical information to the TerraIndex WFS layer.
-version=0.1
-author=Gemeente Rotterdam
-email=kevinschuurman98@gmail.com
+version=1
+author=Kevin Schuurman
+email=kschuurman@cwgi.nl
 
 about=A plugin to easily show TerraIndex sample information directly from the WFS layer. A plugin created in collaboration of TerraIndex and the municipality of Rotterdam.
 
@@ -37,7 +37,7 @@ deprecated=False
 # Since QGIS 3.8, a comma separated list of plugins to be installed
 # (or upgraded) can be specified.
 # Check the documentation for more information.
-# plugin_dependencies=
+plugin_dependencies=pandas, numpy, typing
 
 Category of the plugin: Raster, Vector, Database or Web
 # category=

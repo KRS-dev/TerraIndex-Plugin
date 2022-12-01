@@ -1,4 +1,3 @@
-from re import template
 import requests
 import xml.etree.ElementTree as ET
 import os

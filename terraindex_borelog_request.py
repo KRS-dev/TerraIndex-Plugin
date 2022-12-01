@@ -108,13 +108,14 @@ class BorelogRequest:
             self.borelogParameters['Layout'] = self.plugin.getLayout(layoutID)
             self.borelogParameters['LayoutName'] = layout['TemplateName']
 
-        if self.borelogParameters['DrawKind'] == 'CrossSection':
-            layout = self.borelogParameters['Layout']
-            PageOrientation = layout.split('PageOrientation=')[
-                1].split(r'\n')[0]
-            if not PageOrientation == 'poLandscape':
-                self.iface.messageBar().pushMessage('Warning', 'Layouts in portretmodus zijn niet aan te raden voor dwarsdoorsnedes.', level=Qgis.Warning)
-                #TODO load other layout that is in landscape, give off warning
+        # if self.borelogParameters['DrawKind'] == 'CrossSection':
+
+        #     layout = self.borelogParameters['Layout']
+        #     PageOrientation = layout.split('PageOrientation=')[
+        #         1].split(r'\n')[0]
+        #     if not PageOrientation == 'poLandscape':
+        #         self.iface.messageBar().pushMessage('Warning', 'Layouts in portretmodus zijn niet aan te raden voor dwarsdoorsnedes.', level=Qgis.Warning)
+        #         #TODO load other layout that is in landscape, give off warning
 
     def setXMLparameters(self):
 
