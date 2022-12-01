@@ -1,8 +1,8 @@
 from typing import List, Tuple, Union
-from qgis.gui import QgsRubberBand, QgsMapToolIdentify, QgsMapTool
-from qgis.core import  QgsPointXY, QgsProject, QgsPointXY, QgsRectangle, QgsWkbTypes, QgsGeometry, QgsPolygon, QgsLineString, QgsCoordinateTransform, QgsVector, QgsFeature
+from qgis.gui import QgsRubberBand, QgsMapToolIdentify, QgsMapTool, QgisInterface, QgsMapMouseEvent
+from qgis.core import  QgsPointXY, QgsProject, QgsPointXY, QgsRectangle, QgsWkbTypes, QgsGeometry, QgsLineString, QgsCoordinateTransform, QgsVector, QgsFeature
 
-from qgis.PyQt.QtGui import QTextDocument, QColor, QGuiApplication, QStandardItemModel
+from qgis.PyQt.QtGui import QTextDocument, QColor, QStandardItemModel
 from qgis.PyQt.QtCore import QSizeF, Qt
 
 from collections import OrderedDict
@@ -15,7 +15,7 @@ from functools import partial
 
 class TICrossSectionTool(QgsMapTool):
     """Pointtool class, which overwrites the normal cursor during use of the plugin"""
-    def __init__(self, iface, plugin):
+    def __init__(self, iface: QgisInterface, plugin: 'TerraIndex'):
         super(QgsMapTool, self).__init__(iface.mapCanvas())
 
         self.identifier = QgsMapToolIdentify(iface.mapCanvas())
@@ -44,14 +44,14 @@ class TICrossSectionTool(QgsMapTool):
     def setThickness(self):
         self.thickness = self.plugin.dockwidget.SB_crosssectionWidth.value()
 
-    def mapToLayer(self, QgsGeometry):
+    def mapToLayer(self, QgsGeometry: QgsGeometry):
         return self.canvas().mapSettings().mapToLayerCoordinates(self.plugin.TILayer, QgsGeometry)
     
-    def layerToMap(self, QgsGeometry):
+    def layerToMap(self, QgsGeometry: QgsGeometry):
         return self.canvas().mapSettings().layerToMapCoordinates(self.plugin.TILayer, QgsGeometry)
 
 
-    def canvasPressEvent(self, event):
+    def canvasPressEvent(self, event: QgsMapMouseEvent):
         if event.button() == Qt.LeftButton:
             if not self.isEmittingPoint:
                 modifiers = event.modifiers()
@@ -117,7 +117,7 @@ class TICrossSectionTool(QgsMapTool):
             
 
 
-    def canvasMoveEvent(self, event):
+    def canvasMoveEvent(self, event: QgsMapMouseEvent):
         modifiers = event.modifiers()
         if not self.isEmittingPoint:
             if  modifiers == Qt.ShiftModifier:
@@ -137,10 +137,10 @@ class TICrossSectionTool(QgsMapTool):
         self.showLine(self.startPoint, self.endPoint)
         self.buffer(self.startPoint, self.endPoint)
 
-    def canvasReleaseEvent(self, event):
+    def canvasReleaseEvent(self, event: QgsMapMouseEvent):
         pass          
 
-    def showLine(self, startPoint, endPoint):
+    def showLine(self, startPoint: QgsPointXY, endPoint: QgsPointXY):
         self.rubberband.reset(geometryType=QgsWkbTypes.LineGeometry)
         
         if startPoint.x() == endPoint.x() or startPoint.y() == endPoint.y():
@@ -152,7 +152,7 @@ class TICrossSectionTool(QgsMapTool):
         self.rubberband.addPoint(point2, True) # true to update canvas  
         self.rubberband.show()
 
-    def buffer(self, startPoint, endPoint):
+    def buffer(self, startPoint: QgsPointXY, endPoint: QgsPointXY):
         '''Creates a rectangle with thickness orthogonal to a line segment
 
         Args:

@@ -6,9 +6,9 @@ import json
 import xml.etree.ElementTree as ET
 import functools
 
-
 from qgis.PyQt.QtWidgets import QProgressDialog
-# from qgis.PyQt
+
+from typing import List, Tuple, Dict
 
 # Namespaces for the SOAP request
 ns = {
@@ -25,23 +25,20 @@ def loadingbar(func):
 
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
-        
 
-        ## TODO: Fix progress dialog, it does not show.
-        progress = QProgressDialog("Querying TerraIndex...", "Cancel", 0,0, parent=self.iface.mainWindow(), minimumDuration=0)
+        # TODO: Fix progress dialog, it does not show.
+        progress = QProgressDialog("Querying TerraIndex...", "Cancel",
+                                   0, 0, parent=self.iface.mainWindow(), minimumDuration=0)
         progress.open()
         # progress.setWindowModality()
-
 
         value = func(self, *args, **kwargs)
 
         progress.reset()
 
-
         return value
 
     return wrapper
-
 
 
 class BorelogRequest:
@@ -51,18 +48,16 @@ class BorelogRequest:
     -------
     _type_
         _description_
-    """    
+    """
 
-    
-
-    def __init__(self, plugin, **kwargs):
+    def __init__(self, plugin: 'TerraIndex', **kwargs):
         """_summary_
 
         Parameters
         ----------
         plugin : _type_
             _description_
-        """        
+        """
         self.plugin = plugin
         self.iface = plugin.iface
 
@@ -73,10 +68,11 @@ class BorelogRequest:
             'Language': kwargs.get('Language', 'NL'),
             # BMP, WMF, EMF, JPG, PNG, DXF, PDF, GEF, TIFF
             'OutputType': kwargs.get('OutputType', 'PNG'),
-            'DrawMode': kwargs.get('DrawMode', 'Single'), # Single, Multipage, Page
+            # Single, Multipage, Page
+            'DrawMode': kwargs.get('DrawMode', 'Single'),
             'DrawKind': kwargs.get('DrawKind', 'BoreHole'),  # BoreHole, Legend
             'LayoutName': '',
-            'Layout' : None
+            'Layout': None
         }
 
         self.checkLayoutTemplate()
@@ -95,30 +91,31 @@ class BorelogRequest:
 
     def checkLayoutTemplate(self):
         # Load in the layout file
-        if self.plugin.layoutsDict == {} or not isinstance(self.plugin.layoutsDict, dict):        
+        if self.plugin.layoutsDict == {} or not isinstance(self.plugin.layoutsDict, dict):
             with open(os.path.join(self.plugin.plugin_dir, 'data', r'depots 4 blad.txt'), encoding='utf8') as f:
                 ini = f.read()
                 self.borelogParameters['Layout'] = ini
-            
+
             self.borelogParameters['LayoutName'] = 'depots 4 blad'
         else:
             layoutID = self.plugin.dockwidget.CB_layout.currentData()
             layout = self.plugin.layoutsDict[layoutID]
 
-            print('layoutname: ', layout['TemplateName'], '\n layoutID: ', layoutID)
+            print('layoutname: ',
+                  layout['TemplateName'], '\n layoutID: ', layoutID)
 
             self.borelogParameters['Layout'] = self.plugin.getLayout(layoutID)
             self.borelogParameters['LayoutName'] = layout['TemplateName']
 
         if self.borelogParameters['DrawKind'] == 'CrossSection':
             layout = self.borelogParameters['Layout']
-            PageOrientation = layout.split('PageOrientation=')[1].split(r'\n')[0]
+            PageOrientation = layout.split('PageOrientation=')[
+                1].split(r'\n')[0]
             if not PageOrientation == 'poLandscape':
                 print('pageorientation landscape')
-                ### load other layout that is in landscape, give off warning
+                # load other layout that is in landscape, give off warning
             else:
                 print('po did not work')
-
 
     def setXMLparameters(self):
 
@@ -131,9 +128,9 @@ class BorelogRequest:
 
         root = ET.fromstring(xml_base)
 
-        authorisationParameters ={
-            'Username' : self.plugin.username,
-            'ApplicationCode' : self.plugin.applicationcode,
+        authorisationParameters = {
+            'Username': self.plugin.username,
+            'ApplicationCode': self.plugin.applicationcode,
             'Licensenumber': self.plugin.licensenumber
         }
 
@@ -155,14 +152,13 @@ class BorelogRequest:
                 a = ET.SubElement(b, "{" + ns['b'] + "}" + key)
                 a.text = val
 
-
         self.xml = ET.tostring(root)
 
         with open(r'C:\Users\Desktop\Downloads\test.xml', 'wb') as f:
             f.write(ET.tostring(root))
 
     @loadingbar
-    def request(self):
+    def request(self) -> requests.Response:
 
         if self.xml is None:
             self.setXMLparameters()
@@ -170,45 +166,42 @@ class BorelogRequest:
         token = self.plugin.token
 
         headers = {'content-type': 'application/soap+xml',
-            'Authorization' : 'Bearer {}'.format(token) 
-        }
+                   'Authorization': 'Bearer {}'.format(token)
+                   }
 
         response = requests.post(url=self.url, data=self.xml, headers=headers)
         return response
 
 
-
 class BoreholeDataRequest:
 
-    def __init__(self, plugin):
+    def __init__(self, plugin: 'TerraIndex'):
         self.plugin = plugin
         self.iface = plugin.iface
 
         self.boreholes = []
-    
+
     def addBorehole(self, BoreHoleID: int, ProjectID: int):
         self.boreholes.append(
             {'BoreHoleID': str(BoreHoleID), 'ProjectID': str(ProjectID)})
-    
 
     @loadingbar
-    def request(self):
+    def request(self) -> Tuple[requests.Response, List[Dict]]:
         if self.boreholes:
             url = 'https://web.terraindex.com/DataWSExternals/ITWViewRestService_V1_0/GetQuerryResponse'
             headers = {
                 'Content-Type': 'application/json',
-                'Authorization' : 'Bearer {}'.format(self.plugin.token),
+                'Authorization': 'Bearer {}'.format(self.plugin.token),
             }
             authorisation = self.plugin.getAuthorisationInfo()
             authorisation['Language'] = "nl"
 
             data = []
             for borehole in self.boreholes:
-                
 
                 param = {"LANGUAGECODE": "nld",
-                    "PROJECTID": str(borehole['ProjectID']),
-                    "IDBOORPUNT": str(borehole['BoreHoleID'])}
+                         "PROJECTID": str(borehole['ProjectID']),
+                         "IDBOORPUNT": str(borehole['BoreHoleID'])}
 
                 body = {
                     "Authorisation": authorisation,
@@ -217,11 +210,12 @@ class BoreholeDataRequest:
                     "UseZipStream": True,
                     "DataType": "JSON",
                     "Param": json.dumps(param),
-                    "ViewName":"QGIS.Borehole.Layers"
+                    "ViewName": "QGIS.Borehole.Layers"
                 }
 
-                response = requests.post(url = url, headers=headers, data=json.dumps(body))
-                
+                response = requests.post(
+                    url=url, headers=headers, data=json.dumps(body))
+
                 if response.status_code is not requests.codes.ok:
                     print(response.text)
                     response.raise_for_status()
@@ -229,8 +223,7 @@ class BoreholeDataRequest:
                 else:
                     content = json.loads(response.content)['Content']
 
-                    data.extend(json.loads(gzip.decompress(base64.b64decode(content)))['Table'])
-        
-            return response, data
-    
+                    data.extend(json.loads(gzip.decompress(
+                        base64.b64decode(content)))['Table'])
 
+            return response, data

@@ -1,53 +1,51 @@
-from qgis.gui import QgsMapToolIdentify, QgsRubberBand
-from qgis.core import QgsHtmlAnnotation, QgsSvgAnnotation, QgsTextAnnotation, QgsPointXY, QgsProject, QgsPointXY, QgsRectangle, QgsWkbTypes
+from qgis.gui import QgsMapToolIdentify, QgsRubberBand, QgisInterface, QgsMapMouseEvent
+from qgis.core import QgsHtmlAnnotation, QgsSvgAnnotation, QgsTextAnnotation, QgsPointXY, QgsProject, QgsPointXY, QgsRectangle, QgsWkbTypes, QgsFeature, QgsVectorLayer
 
 from qgis.PyQt.QtGui import QTextDocument
 from qgis.PyQt.QtCore import QSizeF, Qt
 
 from collections import OrderedDict
-
-
-
+from typing import List
 
 class TISelectionTool(QgsMapToolIdentify):
     """Pointtool class, which overwrites the normal cursor during use of the plugin"""
-    def __init__(self, iface, plugin):
+
+    def __init__(self, iface: QgisInterface, plugin: 'TerraIndex'):
         super(QgsMapToolIdentify, self).__init__(iface.mapCanvas())
 
         self.iface = iface
         self.plugin = plugin
 
         self.isEmittingPoint = False
-        self.rubberband = QgsRubberBand(self.canvas(), geometryType=QgsWkbTypes.PolygonGeometry)
+        self.rubberband = QgsRubberBand(
+            self.canvas(), geometryType=QgsWkbTypes.PolygonGeometry)
 
         self.annotationManager = QgsProject.instance().annotationManager()
         self.annotation_features = OrderedDict()
 
+    def canvasPressEvent(self, event: QgsMapMouseEvent):
 
-    def canvasPressEvent(self, event):
-        
         self.startPoint = self.toMapCoordinates(event.pos())
         self.endPoint = self.startPoint
-        self.isEmittingPoint = True 
+        self.isEmittingPoint = True
 
-
-    def canvasMoveEvent(self, event):
+    def canvasMoveEvent(self, event: QgsMapMouseEvent):
         if not self.isEmittingPoint:
             return
 
         self.endPoint = self.toMapCoordinates(event.pos())
         self.showRect(self.startPoint, self.endPoint)
 
-    def canvasReleaseEvent(self, event):
+    def canvasReleaseEvent(self, event: QgsMapMouseEvent):
         modifiers = event.modifiers()
-        
+
         self.isEmittingPoint = False
 
         # do something when a single point is clicked
         if self.startPoint.compare(self.endPoint):
-            found_features = self.identify(x = event.x(), y= event.y(),
-                                        layerList=[self.plugin.TILayer], 
-                                        mode=self.TopDownStopAtFirst)
+            found_features = self.identify(x=event.x(), y=event.y(),
+                                           layerList=[self.plugin.TILayer],
+                                           mode=self.TopDownStopAtFirst)
 
             if modifiers == Qt.ControlModifier:
                 if len(found_features) > 0:
@@ -63,7 +61,7 @@ class TISelectionTool(QgsMapToolIdentify):
                 f = found_features[0].mFeature
                 self.deselectFeatures()
                 self.addFeature(f)
-                #self.addAnnotation(feature, layer) 
+                #self.addAnnotation(feature, layer)
                 self.plugin.getBorelogImage(f)
             else:
 
@@ -76,18 +74,17 @@ class TISelectionTool(QgsMapToolIdentify):
                 self.deselectFeatures()
 
             if r is not None:
-                #builds bbRect and select from layer, adding selection
+                # builds bbRect and select from layer, adding selection
                 bbRect = self.canvas().mapSettings().mapToLayerCoordinates(self.plugin.TILayer, r)
                 features = self.plugin.TILayer.getFeatures(bbRect)
                 for f in features:
                     self.addFeature(f)
-            
-            self.rubberband.hide()
-            
 
-    def showRect(self, startPoint, endPoint):
+            self.rubberband.hide()
+
+    def showRect(self, startPoint: QgsPointXY, endPoint: QgsPointXY):
         self.rubberband.reset(QgsWkbTypes.PolygonGeometry)
-        
+
         if startPoint.x() == endPoint.x() or startPoint.y() == endPoint.y():
             return
         point1 = QgsPointXY(startPoint.x(), startPoint.y())
@@ -101,7 +98,7 @@ class TISelectionTool(QgsMapToolIdentify):
         self.rubberband.addPoint(point4, True)    # true to update canvas
         self.rubberband.show()
 
-    def rectangle(self):
+    def rectangle(self) -> QgsRectangle:
         """
         Builds rectangle from self.startPoint and self.endPoint
         """
@@ -111,34 +108,33 @@ class TISelectionTool(QgsMapToolIdentify):
             return None
         return QgsRectangle(self.startPoint, self.endPoint)
 
-    def addFeature(self, feature):
+    def addFeature(self, feature: QgsFeature):
         self.plugin.TILayer.select(feature.id())
-    
-    def removeFeature(self, feature):
+
+    def removeFeature(self, feature: QgsFeature):
         self.plugin.TILayer.deselect(feature.id())
 
-    def setSelectedFeatures(self, features):
+    def setSelectedFeatures(self, features: List[QgsFeature]):
         self.plugin.TILayer.selectByIds([f.id() for f in features])
-        
+
     def deselectFeatures(self):
         self.plugin.TILayer.removeSelection()
 
-    def getSelectedFeature(self):
+    def getSelectedFeature(self) -> List[QgsFeature]:
         return self.plugin.TILayer.selectedFeatures()
 
-    def addAnnotation(self, feature, layer):
+    def addAnnotation(self, feature: QgsFeature, layer: QgsVectorLayer):
 
-        if  feature not in set(self.annotation_features.keys()):
+        if feature not in set(self.annotation_features.keys()):
 
             geom = feature.geometry().asPoint()
 
             annot = QgsTextAnnotation()
-            annot.setDocument( QTextDocument('test'))
-            annot.setFrameSize(QSizeF(100,100))
-            #annot.setAssociatedFeature(feature)
+            annot.setDocument(QTextDocument('test'))
+            annot.setFrameSize(QSizeF(100, 100))
+            # annot.setAssociatedFeature(feature)
             annot.setMapPositionCrs(layer.crs())
             annot.setMapPosition(QgsPointXY(geom.x(), geom.y()))
-
 
             if len(self.annotation_features) < 10:
                 self.annotation_features[feature] = annot
@@ -151,11 +147,9 @@ class TISelectionTool(QgsMapToolIdentify):
                 self.annotation_features.move_to_end(feature, last=False)
                 self.annotationManager.addAnnotation(annot)
 
-
     def removeAnnotations(self):
         for annot in self.annotation_features.values():
             self.annotationManager.removeAnnotation(annot)
-
 
     def deactivate(self):
 
@@ -163,9 +157,6 @@ class TISelectionTool(QgsMapToolIdentify):
 
         self.rubberband.reset()
         QgsMapToolIdentify.deactivate(self)
-
-
-
 
     def isZoomTool(self):
         return False
