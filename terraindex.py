@@ -183,7 +183,7 @@ class TerraIndex:
         self.errormessage = None
         self.authorisationBool = False
 
-        self.map_tool = None
+        self.mapTool = None
 
         self.layoutsDict = {}
 
@@ -296,6 +296,8 @@ class TerraIndex:
             parent=self.iface.mainWindow())
 
     def initTILayer(self, *args):
+        """Looks for a TerraIndex measurementpoint WFS layer in the project and links the plugin to the layer. 
+        If it cannot find the layer and the user is logged in, it will create the layer."""
         
         layers = QgsProject.instance().mapLayers()
         TILayer = None
@@ -314,7 +316,7 @@ class TerraIndex:
     @login
     def createTILayer(self, *args):
         if self.TILayer is None:
-            uri = "user='{}' password='{}' pagingEnabled='false' preferCoordinatesForWfsT11='false' restrictToRequestBBOX='1' srsname='EPSG:4326' typename='ti-workspace:AllProjects_MeasurementPoints_pnt' url='https://gwr.geoserver.terraindex.com/geoserver/ti-workspace/ows' version='auto'"
+            uri = "user='{}' password='{}' pagingEnabled='true' maxFeatures=1000 preferCoordinatesForWfsT11='false' restrictToRequestBBOX='1' srsname='EPSG:4326' typename='ti-workspace:AllProjects_MeasurementPoints_pnt' url='https://gwr.geoserver.terraindex.com/geoserver/ti-workspace/ows' version='auto'"
             uri = uri.format(self.username, self.pincode)
             TILayer = QgsVectorLayer(uri,'AllProjects_MeasurementPoints_pnt', 'WFS')
             TILayer.loadNamedStyle(os.path.join(self.plugin_dir, 'data', 'TerraIndexLayerStyle.qml'))
@@ -331,11 +333,11 @@ class TerraIndex:
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
 
         # reset maptool
-        if self.map_tool:
-            self.map_tool.deactivate()
-        # self.iface.mapCanvas().unsetMapTool(self.map_tool)
+        if self.mapTool:
+            self.mapTool.deactivate()
+        # self.iface.mapCanvas().unsetMapTool(self.mapTool)
         # set map tool to the previous one
-        self.iface.mapCanvas().setMapTool(self.last_map_tool)
+        self.iface.mapCanvas().setMapTool(self.lastMapTool)
 
         # remove this statement if dockwidget is to remain
         # for reuse if plugin is reopened
@@ -365,13 +367,12 @@ class TerraIndex:
         if isinstance(currentMapTool, (TISelectionTool, TICrossSectionTool)):
             if not isinstance(currentMapTool, newMapTool):
                 tool = newMapTool(self.iface, self)
-                self.map_tool = tool
+                self.mapTool = tool
                 self.iface.mapCanvas().setMapTool(tool)
         else:
-
-            self.last_map_tool = currentMapTool
+            self.lastMapTool = currentMapTool
             tool = newMapTool(self.iface, self)
-            self.map_tool = tool
+            self.mapTool = tool
             self.iface.mapCanvas().setMapTool(tool)
     
     def getAuthorisationInfo(self):
@@ -729,8 +730,3 @@ class PandasTableModel(QStandardItemModel):
         if orientation == Qt.Vertical and role == Qt.DisplayRole:
             return self._data.index[x]
         return None
-    
-    # def clear(self):
-    #     self.layoutAboutToBeChanged.emit()
-    #     self._data.drop(self._data.index,inplace=True) 
-    #     self.layoutChanged.emit()
