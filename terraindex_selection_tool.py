@@ -44,13 +44,13 @@ class TISelectionTool(QgsMapToolIdentify):
         # do something when a single point is clicked
         if self.startPoint.compare(self.endPoint):
             found_features = self.identify(x=event.x(), y=event.y(),
-                                           layerList=[self.plugin.TILayer],
+                                           layerList=[self.plugin.tiLayer],
                                            mode=self.TopDownStopAtFirst)
 
             if modifiers == Qt.ControlModifier:
                 if len(found_features) > 0:
                     f = found_features[0].mFeature
-                    if f.id() in self.plugin.TILayer.selectedFeatureIds():
+                    if f.id() in self.plugin.tiLayer.selectedFeatureIds():
                         self.removeFeature(f)
                     else:
                         self.addFeature(f)
@@ -75,8 +75,8 @@ class TISelectionTool(QgsMapToolIdentify):
 
             if r is not None:
                 # builds bbRect and select from layer, adding selection
-                bbRect = self.canvas().mapSettings().mapToLayerCoordinates(self.plugin.TILayer, r)
-                features = self.plugin.TILayer.getFeatures(bbRect)
+                bbRect = self.canvas().mapSettings().mapToLayerCoordinates(self.plugin.tiLayer, r)
+                features = self.plugin.tiLayer.getFeatures(bbRect)
                 for f in features:
                     self.addFeature(f)
 
@@ -109,19 +109,19 @@ class TISelectionTool(QgsMapToolIdentify):
         return QgsRectangle(self.startPoint, self.endPoint)
 
     def addFeature(self, feature: QgsFeature):
-        self.plugin.TILayer.select(feature.id())
+        self.plugin.tiLayer.select(feature.id())
 
     def removeFeature(self, feature: QgsFeature):
-        self.plugin.TILayer.deselect(feature.id())
+        self.plugin.tiLayer.deselect(feature.id())
 
     def setSelectedFeatures(self, features: List[QgsFeature]):
-        self.plugin.TILayer.selectByIds([f.id() for f in features])
+        self.plugin.tiLayer.selectByIds([f.id() for f in features])
 
     def deselectFeatures(self):
-        self.plugin.TILayer.removeSelection()
+        self.plugin.tiLayer.removeSelection()
 
     def getSelectedFeature(self) -> List[QgsFeature]:
-        return self.plugin.TILayer.selectedFeatures()
+        return self.plugin.tiLayer.selectedFeatures()
 
     def addAnnotation(self, feature: QgsFeature, layer: QgsVectorLayer):
 

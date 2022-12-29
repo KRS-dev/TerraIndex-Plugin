@@ -1,7 +1,7 @@
 import os
 from pickle import NONE
 import requests, json
-
+from typing import Tuple
 from qgis.PyQt import QtGui, QtWidgets, uic
 
 
@@ -31,8 +31,14 @@ class TerraIndexLoginDialog(QtWidgets.QDialog, FORM_CLASS):
 
         
     
-    def getToken(self):
-        
+    def getToken(self) -> Tuple[bool, object, str, str, int, int]:
+        """Sends a request to web.terraindex.com for a application login token.
+
+        Returns
+        -------
+        Tuple[bool, object, str, str, int, int]
+            request result, json dict, username, password, licensenumber, applicationcode
+        """        
         results = None
         if self.result() == 1:
             url = r'https://web.terraindex.com/ReportWS/tokenmanager/ReportingToken'

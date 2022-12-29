@@ -23,7 +23,10 @@ ns = {
 
 
 def loadingbar(func):
+    """Loading bar decorator TODO freezes as gui
 
+    
+    """    
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
 
@@ -31,7 +34,6 @@ def loadingbar(func):
         progress = QProgressDialog("Querying TerraIndex...", "Cancel",
                                    0, 0, parent=self.iface.mainWindow(), minimumDuration=0)
         progress.open()
-        # progress.setWindowModality()
 
         value = func(self, *args, **kwargs)
 
@@ -47,18 +49,16 @@ class BorelogRequest:
 
     Returns
     -------
-    _type_
-        _description_
+    request.Response
+        Soap request response from ITWBoreprofileService_V1_0.svc.
     """
 
     def __init__(self, plugin: 'TerraIndex', **kwargs):
-        """_summary_
-
+        """
         Parameters
         ----------
-        plugin : _type_
-            _description_
-        """
+        plugin : TerraIndex
+        """        
         self.plugin = plugin
         self.iface = plugin.iface
 
@@ -67,10 +67,8 @@ class BorelogRequest:
         self.borelogParameters = {
             'PageNumber': kwargs.get('PageNumber', '1'),
             'Language': kwargs.get('Language', 'NL'),
-            # BMP, WMF, EMF, JPG, PNG, DXF, PDF, GEF, TIFF
-            'OutputType': kwargs.get('OutputType', 'PNG'),
-            # Single, Multipage, Page
-            'DrawMode': kwargs.get('DrawMode', 'Single'),
+            'OutputType': kwargs.get('OutputType', 'PNG'),   # BMP, WMF, EMF, JPG, PNG, DXF, PDF, GEF, TIFF
+            'DrawMode': kwargs.get('DrawMode', 'Single'),    # Single, Multipage, Page
             'DrawKind': kwargs.get('DrawKind', 'BoreHole'),  # BoreHole, Legend
             'LayoutName': '',
             'Layout': None
@@ -93,6 +91,7 @@ class BorelogRequest:
     def checkLayoutTemplate(self):
         # Load in the layout file
         if self.plugin.layoutsDict == {} or not isinstance(self.plugin.layoutsDict, dict):
+            # Backup template
             with open(os.path.join(self.plugin.plugin_dir, 'data', r'depots 4 blad.txt'), encoding='utf8') as f:
                 ini = f.read()
                 self.borelogParameters['Layout'] = ini
@@ -101,9 +100,6 @@ class BorelogRequest:
         else:
             layoutID = self.plugin.dockwidget.CB_layout.currentData()
             layout = self.plugin.layoutsDict[layoutID]
-
-            print('layoutname: ',
-                  layout['TemplateName'], '\n layoutID: ', layoutID)
 
             self.borelogParameters['Layout'] = self.plugin.getLayout(layoutID)
             self.borelogParameters['LayoutName'] = layout['TemplateName']

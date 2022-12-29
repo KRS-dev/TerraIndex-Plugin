@@ -46,7 +46,8 @@ import time
 import json
 
 # Import for requests
-import requests, base64
+import requests
+import base64
 import xml.etree.ElementTree as ET
 from io import BytesIO
 import webbrowser
@@ -57,7 +58,7 @@ import pprint
 
 from typing import Any, Dict, Iterable, List, Sequence, Tuple, Union
 
-## Namespaces for the SOAP request/response
+# Namespaces for the SOAP request/response
 ns = {
     's': "http://www.w3.org/2003/05/soap-envelope",
     'a': "http://www.w3.org/2005/08/addressing",
@@ -67,23 +68,24 @@ ns = {
     'c': "http://schemas.datacontract.org/2004/07/ITWorks.BusinessEntities.Authorisation"
 }
 
-## Defining to useful wrapper functions
+# Defining to useful wrapper functions
+
 
 def login(func):
     """Login Wrapper to check if user credentialcheckTILainyinterAvailables are available or ask for the credentials."""
 
     @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        
-        def credentialPull(self, dialog, func):
+    def wrapper(self: 'TerraIndex', *args, **kwargs):
+
+        def credentialPull(self: TerraIndex, dialog: TerraIndexLoginDialog, func):
 
             self.loginWindowIsActive = False
             success, results, username, pincode, licensenumber, applicationcode = dialog.getToken()
 
-            if success is 1: ## clicked ok
+            if success is 1:  # clicked ok
 
                 if results['ResultCode'] == 0:
-                    
+
                     self.session_start_t = time.time()
                     self.token = results['Result']
                     self.errormessage = ''
@@ -95,47 +97,44 @@ def login(func):
 
                     self.authorisationBool = True
 
-                    
-
                     # evaluate the actual function
                     return func(self, *args, **kwargs)
                 else:
-                    ## login failed
-                    
+                    # login failed
+
                     error_json = results['Message']
                     error_json = error_json.split(':', 1)[1]
                     error = json.loads(error_json)
-                    
-                    errormessage = '{}: {}'.format(error['error'], error['error_description'])
+
+                    errormessage = '{}: {}'.format(
+                        error['error'], error['error_description'])
                     self.errormessage = errormessage
 
-                    setupCredentialsDialog(self, username=username, password=pincode, message=self.errormessage)
+                    setupCredentialsDialog(
+                        self, username=username, password=pincode, message=self.errormessage)
 
-
-            else: # Closed dialog any other way
+            else:  # Closed dialog any other way
                 pass
 
-        
-        def setupCredentialsDialog(self, **kwargs):
+        def setupCredentialsDialog(self: 'TerraIndex', **kwargs):
             self.loginWindowIsActive = True
             dialog = TerraIndexLoginDialog(**kwargs)
-            partialCredPull = functools.partial(credentialPull, self=self, dialog=dialog, func=func)
+            partialCredPull = functools.partial(
+                credentialPull, self=self, dialog=dialog, func=func)
             dialog.finished.connect(partialCredPull)
             dialog.exec_()
-        
+
         # Check if we have a token or if the token expired (~1 hour)
         if self.token is None or time.time() - self.session_start_t > 3580:
             if not self.loginWindowIsActive:
-                setupCredentialsDialog(self, username=self.username, password=self.pincode, message=self.errormessage)
+                setupCredentialsDialog(
+                    self, username=self.username, password=self.pincode, message=self.errormessage)
         else:
             return func(self, *args, **kwargs)
-
 
     return wrapper
 
 
-
-## Main Class
 class TerraIndex:
     """TerraIndex Plugin Implementation """
 
@@ -173,7 +172,7 @@ class TerraIndex:
         self.toolbar = self.iface.addToolBar(u'TerraIndex')
         self.toolbar.setObjectName(u'TerraIndex')
 
-        self.TILayer = None
+        self.tiLayer = None
         self.token = None
         self.session_start_t = 0
         self.username = None
@@ -298,31 +297,30 @@ class TerraIndex:
     def initTILayer(self, *args):
         """Looks for a TerraIndex measurementpoint WFS layer in the project and links the plugin to the layer. 
         If it cannot find the layer and the user is logged in, it will create the layer."""
-        
+
         layers = QgsProject.instance().mapLayers()
-        TILayer = None
+        tiLayer = None
 
         for layer in layers.values():
             src = QgsDataSourceUri(layer.source())
             if src.hasParam('url') and src.hasParam('typename'):
                 if src.param('url') == 'https://gwr.geoserver.terraindex.com/geoserver/ti-workspace/ows' and src.param('typename') == 'ti-workspace:AllProjects_MeasurementPoints_pnt':
-                    self.TILayer = layer
-        
-        if TILayer is None and self.authorisationBool:
+                    self.tiLayer = layer
+
+        if tiLayer is None and self.authorisationBool:
             self.createTILayer()
 
-
-    
     @login
     def createTILayer(self, *args):
-        if self.TILayer is None:
+        if self.tiLayer is None:
             uri = "user='{}' password='{}' pagingEnabled='true' maxFeatures=1000 preferCoordinatesForWfsT11='false' restrictToRequestBBOX='1' srsname='EPSG:4326' typename='ti-workspace:AllProjects_MeasurementPoints_pnt' url='https://gwr.geoserver.terraindex.com/geoserver/ti-workspace/ows' version='auto'"
             uri = uri.format(self.username, self.pincode)
-            TILayer = QgsVectorLayer(uri,'AllProjects_MeasurementPoints_pnt', 'WFS')
-            TILayer.loadNamedStyle(os.path.join(self.plugin_dir, 'data', 'TerraIndexLayerStyle.qml'))
-            QgsProject.instance().addMapLayer(TILayer)
-            self.TILayer = TILayer
-
+            tiLayer = QgsVectorLayer(
+                uri, 'AllProjects_MeasurementPoints_pnt', 'WFS')
+            tiLayer.loadNamedStyle(os.path.join(
+                self.plugin_dir, 'data', 'TerraIndexLayerStyle.qml'))
+            QgsProject.instance().addMapLayer(tiLayer)
+            self.tiLayer = tiLayer
 
     # --------------------------------------------------------------------------
 
@@ -362,7 +360,7 @@ class TerraIndex:
 
     # --------------------------------------------------------------------------
 
-    def setMapTool(self, newMapTool: QgsMapTool=TISelectionTool):
+    def setMapTool(self, newMapTool: QgsMapTool = TISelectionTool):
         currentMapTool = self.iface.mapCanvas().mapTool()
         if isinstance(currentMapTool, (TISelectionTool, TICrossSectionTool)):
             if not isinstance(currentMapTool, newMapTool):
@@ -374,7 +372,7 @@ class TerraIndex:
             tool = newMapTool(self.iface, self)
             self.mapTool = tool
             self.iface.mapCanvas().setMapTool(tool)
-    
+
     def getAuthorisationInfo(self):
         d = {
             'ApplicationCode': self.applicationcode,
@@ -385,9 +383,10 @@ class TerraIndex:
 
     @login
     def getBorelogImage(self, feature: QgsFeature):
-        
+
         if self.checkRequiredFields(feature) is False:
-            self.iface.messageBar().pushMessage('Error', 'Kon geen ProjectID of MeasurementPointID in de features vinden. Heb je wel punten van de TerraIndex Laag geselecteerd?', level=Qgis.Warning)
+            self.iface.messageBar().pushMessage('Error',
+                                                'Kon geen ProjectID of MeasurementPointID in de features vinden. Heb je wel punten van de TerraIndex Laag geselecteerd?', level=Qgis.Warning)
             return
 
         projectID = feature['ProjectID']
@@ -413,25 +412,27 @@ class TerraIndex:
             scene.addItem(pmitem)
             self.dockwidget.graphicsView.setScene(scene)
             self.dockwidget.tabWidget.setCurrentIndex(0)
-    
+
     @login
     def getBorelogsPDF(self, features: Iterable[QgsFeature]):
 
         if self.checkRequiredFields(features[0]) is False:
-            self.iface.messageBar().pushMessage('Error', 'Kon geen ProjectID of MeasurementPointID in de features vinden. Heb je wel punten van de TerraIndex Laag geselecteerd?', level=Qgis.Warning)
+            self.iface.messageBar().pushMessage('Error',
+                                                'Kon geen ProjectID of MeasurementPointID in de features vinden. Heb je wel punten van de TerraIndex Laag geselecteerd?', level=Qgis.Warning)
             return
 
         boreholeid_list = []
         for feature in features:
             boreholeid_list.append({'ProjectID': feature['ProjectID'],
-                                'BoreHoleID': feature['MeasurementPointID']})
-        
+                                    'BoreHoleID': feature['MeasurementPointID']})
+
         request = BorelogRequest(self, DrawMode='MultiPage', OutputType='PDF')
 
         for d in boreholeid_list:
             request.addBorehole(**d)
 
-        filename, _ = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save PDF:"), 'borelogs', self.tr('pdf (*.pdf)') )
+        filename, _ = QFileDialog.getSaveFileName(self.dockwidget, self.tr(
+            "Save PDF:"), 'borelogs', self.tr('pdf (*.pdf)'))
 
         if not filename:
             return
@@ -453,65 +454,30 @@ class TerraIndex:
                 f.write(bytes)
 
             webbrowser.open(filename)
-    
-    @staticmethod
-    def sortCrossSection(crossSectionDict: Dict[int, Tuple[QgsFeature, float]]) -> Dict[int, Tuple[QgsFeature, float]]:
-        
-        def distance( a: Tuple[Any, float]) -> float:
-            return a[1][1]
-        
-        return {k: v for k, v in sorted(crossSectionDict.items(), key=distance)}
-    
-    @staticmethod
-    def scaleCrossSectionDistances(crossSectionDict: Dict[int, Tuple[QgsFeature, float]], factor: float) -> Dict[int, Tuple[QgsFeature, float]]:
-        distances= [x[1] for x in crossSectionDict.values()]
-        min_dist = min(distances)
 
-        return {fid: (f, factor*(d-min_dist)) for fid, (f, d) in crossSectionDict.items()}
-
-
-    # # def normalizeCrossSectionDistances(self, crossSectionDict: Dict[int, Tuple[QgsFeature, float]], min_width:int=10, factor=None) -> Tuple[float, Dict[int, Tuple[QgsFeature, float]]]:
-    #     if crossSectionDict:
-    #         distances = [float(f[1]) for f in crossSectionDict]
-    #         idx = np.argsort(distances).tolist()
-    #         sorted_distances = [distances[i] for i in idx]
-    #         print(sorted_distances)
- 
-    #         sorted_crossSections = [crossSectionDict[i] for i in idx]
-
-    #         diff = np.diff(sorted_distances)
-    #         min_dist = np.min(diff)
-    #         if factor is None:
-    #             factor = min_width/min_dist
-    #             distances2 = np.hstack([np.array([0]), np.cumsum(diff)*factor]) # start distances from 0
-    #         else:
-    #             distances2 = np.hstack([np.array([0]), np.cumsum(diff)*factor]) # start distances from 0
-
-    #         crossSectionDict2 = []
-    #         for i, (f, d) in enumerate(sorted_crossSections):
-    #             crossSectionDict2.append((f, round(distances2[i])))
-
-    #         return factor, crossSectionDict2
 
     @login
     def getCrossSectionPDF(self, crossSectionDict: Dict[int, Tuple[QgsFeature, float]]):
 
         scale = self.dockwidget.SP_scale.value()
-        norm_crossSections = self.scaleCrossSectionDistances(self.sortCrossSection(crossSectionDict), scale)
+        norm_crossSections = self.scaleCrossSectionDistances(
+            self.sortCrossSection(crossSectionDict), scale)
 
         boreholeid_list = []
         for feature, distance in norm_crossSections.values():
             boreholeid_list.append({'ProjectID': feature['ProjectID'],
-                                'BoreHoleID': feature['MeasurementPointID'],
-                                'Distance': int(distance)
-                                })
+                                    'BoreHoleID': feature['MeasurementPointID'],
+                                    'Distance': int(distance)
+                                    })
 
-        request = BorelogRequest(self, DrawKind='CrossSection', DrawMode='MultiPage', OutputType='PDF')
+        request = BorelogRequest(
+            self, DrawKind='CrossSection', DrawMode='MultiPage', OutputType='PDF')
 
         for d in boreholeid_list:
             request.addBorehole(**d)
 
-        filename, _ = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save PDF:"), 'CrossSection', self.tr('pdf (*.pdf)') )
+        filename, _ = QFileDialog.getSaveFileName(self.dockwidget, self.tr(
+            "Save PDF:"), 'CrossSection', self.tr('pdf (*.pdf)'))
 
         if not filename:
             return
@@ -536,29 +502,29 @@ class TerraIndex:
             webbrowser.open(filename)
 
     @login
-    def requestBoreholeData(self, features: Iterable[QgsFeature]) ->  dict:
-        
+    def requestBoreholeData(self, features: Iterable[QgsFeature]) -> dict:
+
         boreholeid_list = []
         for feature in features:
             boreholeid_list.append({'ProjectID': feature['ProjectID'],
-                                'BoreHoleID': feature['MeasurementPointID']})
-        
+                                    'BoreHoleID': feature['MeasurementPointID']})
+
         request = BoreholeDataRequest(self)
 
         for d in boreholeid_list:
             request.addBorehole(**d)
-        
+
         response, data = request.request()
 
         if response.status_code is not requests.codes.ok:
             self.iface.messageBar().pushMessage("Error", response.reason, level=Qgis.Critical)
             response.raise_for_status()
-        
+
         return data
-    
+
     @login
     def showData(self, *args):
-        features = self.TILayer.selectedFeatures()
+        features = self.tiLayer.selectedFeatures()
 
         if len(features) > 0:
             features2 = self.sortFeatures(features)
@@ -567,22 +533,27 @@ class TerraIndex:
 
             if self.crossSectionDict:
                 self.checkCanvasCrs()
-                crossSectionDict2 = self.sortCrossSection(self.crossSectionDict)
-                join_table = [[f['MeasurementPointID'], f['ProjectID'], round(d,2)] for f, d in self.crossSectionDict.values()]
-                join_table = pd.DataFrame(data=join_table, columns=['MeasurementPointID', 'ProjectID', 'CrossSectionDistance'])
-                df = pd.merge(df, join_table, how='left', left_on=['MeasurementPointID', 'ProjectID'], right_on=['MeasurementPointID', 'ProjectID'])
+                crossSectionDict2 = self.sortCrossSection(
+                    self.crossSectionDict)
+                join_table = [[f['MeasurementPointID'], f['ProjectID'], round(
+                    d, 2)] for f, d in self.crossSectionDict.values()]
+                join_table = pd.DataFrame(data=join_table, columns=[
+                                          'MeasurementPointID', 'ProjectID', 'CrossSectionDistance'])
+                df = pd.merge(df, join_table, how='left', left_on=[
+                              'MeasurementPointID', 'ProjectID'], right_on=['MeasurementPointID', 'ProjectID'])
 
             self.updateTable(df)
 
     @login
     def downloadData(self, *args):
-        filename, selectedFilter = QFileDialog.getSaveFileName(self.dockwidget, self.tr("Save Borehole Data:"), 'borelogs_data', self.tr('data (*.csv *.xlsx)') )
+        filename, selectedFilter = QFileDialog.getSaveFileName(self.dockwidget, self.tr(
+            "Save Borehole Data:"), 'borelogs_data', self.tr('data (*.csv *.xlsx)'))
         if not filename:
             return
         _, ext = os.path.splitext(filename)
 
         df = self.table._data
-        if ext == '.csv': 
+        if ext == '.csv':
             df.to_csv(filename, sep=';')
         elif ext == '.xlsx':
             df.to_excel(filename)
@@ -591,21 +562,23 @@ class TerraIndex:
     def updateLayoutNames(self):
         self.layoutsDict = layoutTemplatesRequest(self)
         for key, val in self.layoutsDict.items():
-            ## adds the names as text to the combobox and layoutid as data
-            self.dockwidget.CB_layout.addItem(val['TemplateName'], userData=key)
-    
+            # adds the names as text to the combobox and layoutid as data
+            self.dockwidget.CB_layout.addItem(
+                val['TemplateName'], userData=key)
+
     @login
     def getLayout(self, id: int) -> str:
         return layoutDataRequest(self, TemplateID=id)
-    
+
     def downloadPDF(self):
-        
-        features = self.TILayer.selectedFeatures()
-            
-        if not len(features) > 0 :
+
+        features = self.tiLayer.selectedFeatures()
+
+        if not len(features) > 0:
             return
         elif self.checkRequiredFields(features[0]) is False:
-            self.iface.messageBar().pushMessage('Error', 'Kon geen ProjectID of MeasurementPointID in de features vinden. Heb je wel punten van de TerraIndex Laag geselecteerd?', level=Qgis.Warning)
+            self.iface.messageBar().pushMessage('Error',
+                                                'Kon geen ProjectID of MeasurementPointID in de features vinden. Heb je wel punten van de TerraIndex Laag geselecteerd?', level=Qgis.Warning)
             return
 
         if self.crossSectionDict:
@@ -613,18 +586,19 @@ class TerraIndex:
             self.getCrossSectionPDF(self.crossSectionDict)
         else:
             features2 = self.sortFeatures(features)
-            self.getBorelogsPDF(features2) 
-    
+            self.getBorelogsPDF(features2)
+
     def checkCanvasCrs(self):
         crs = self.iface.mapCanvas().mapSettings().destinationCrs()
         if not crs.authid() == 'EPSG:28992':
             self.iface.messageBar().pushMessage(
-                "CRS warning", 
-                "The project CRS is not EPSG:28992. Note that the crosssectional distance will be calculated in the project CRS:{}".format(crs.authid()), 
+                "CRS warning",
+                "The project CRS is not EPSG:28992. Note that the crosssectional distance will be calculated in the project CRS:{}".format(
+                    crs.authid()),
                 level=Qgis.Warning
-                )
-    
-    def updateTable(self, df: pd.DataFrame=None, reset=False):
+            )
+
+    def updateTable(self, df: pd.DataFrame = None, reset=False):
         if not reset:
             self.table = PandasTableModel(df)
             self.dockwidget.tableView.setModel(self.table)
@@ -651,26 +625,30 @@ class TerraIndex:
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
-            
+
             self.dockwidget.PB_downloadpdf.clicked.connect(self.downloadPDF)
-            self.dockwidget.PB_updateLayouts.pressed.connect(self.updateLayoutNames)
+            self.dockwidget.PB_updateLayouts.pressed.connect(
+                self.updateLayoutNames)
             self.dockwidget.PB_showdata.clicked.connect(self.showData)
             self.dockwidget.PB_downloaddata.clicked.connect(self.downloadData)
 
-            setMapToolCrossSection = functools.partial(self.setMapTool, newMapTool=TICrossSectionTool)
-            self.dockwidget.PB_crosssection.clicked.connect(setMapToolCrossSection)
-            setMapToolSelection = functools.partial(self.setMapTool, newMapTool=TISelectionTool)
+            setMapToolCrossSection = functools.partial(
+                self.setMapTool, newMapTool=TICrossSectionTool)
+            self.dockwidget.PB_crosssection.clicked.connect(
+                setMapToolCrossSection)
+            setMapToolSelection = functools.partial(
+                self.setMapTool, newMapTool=TISelectionTool)
             self.dockwidget.PB_boreprofile.clicked.connect(setMapToolSelection)
- 
+
             # self.dockwidget.CB_layout.activated.connect(self.updateLayouts)
             # Load the layouts
             if self.layoutsDict == {}:
                 self.updateLayoutNames()
 
-
             # initialize TISelectionTool
             self.setMapTool()
-            self.dockwidget.GB_SP_scale.setEnabled(False) # Disables the distance scaling spinbox
+            # Disables the distance scaling spinbox
+            self.dockwidget.GB_SP_scale.setEnabled(False)
 
             self.initTILayer()
             self.dockwidget.PB_TILayer.clicked.connect(self.createTILayer)
@@ -679,8 +657,21 @@ class TerraIndex:
             # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
             self.dockwidget.show()
+    
+    @staticmethod
+    def sortCrossSection(crossSectionDict: Dict[int, Tuple[QgsFeature, float]]) -> Dict[int, Tuple[QgsFeature, float]]:
 
+        def distance(a: Tuple[Any, float]) -> float:
+            return a[1][1]
 
+        return {k: v for k, v in sorted(crossSectionDict.items(), key=distance)}
+
+    @staticmethod
+    def scaleCrossSectionDistances(crossSectionDict: Dict[int, Tuple[QgsFeature, float]], factor: float) -> Dict[int, Tuple[QgsFeature, float]]:
+        distances = [x[1] for x in crossSectionDict.values()]
+        min_dist = min(distances)
+
+        return {fid: (f, factor*(d-min_dist)) for fid, (f, d) in crossSectionDict.items()}
 
     @staticmethod
     def sortFeatures(features: Iterable[QgsFeature]) -> List[QgsFeature]:
@@ -689,12 +680,12 @@ class TerraIndex:
             return f['ProjectID']
 
         def get_pointID(f):
-            return f['MeasurementPointID'] 
+            return f['MeasurementPointID']
 
         def sortProjectPoint(f):
-            return (get_projectID(f), get_pointID(f)) 
+            return (get_projectID(f), get_pointID(f))
 
-        features2 = sorted(features, key=sortProjectPoint) 
+        features2 = sorted(features, key=sortProjectPoint)
 
         return features2
 
@@ -706,15 +697,18 @@ class TerraIndex:
 
         return set(req).issubset(fields)
 
+
 class PandasTableModel(QStandardItemModel):
     '''Helper class for converting Pandas Dataframe to a Qt Table model.
     https://stackoverflow.com/questions/31475965/fastest-way-to-populate-qtableview-from-pandas-data-frame
-    '''    
-    def __init__(self, data:pd.DataFrame, parent=None):
+    '''
+
+    def __init__(self, data: pd.DataFrame, parent=None):
         QStandardItemModel.__init__(self, parent)
         self._data = data
         for col in data.columns:
-            data_col = [QStandardItem("{}".format(x)) for x in data[col].values]
+            data_col = [QStandardItem("{}".format(x))
+                        for x in data[col].values]
             self.appendColumn(data_col)
         return
 
