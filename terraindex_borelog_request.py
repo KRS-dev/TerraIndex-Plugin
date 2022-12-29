@@ -150,8 +150,6 @@ class BorelogRequest:
 
         self.xml = ET.tostring(root)
 
-        with open(r'C:\Users\Desktop\Downloads\test.xml', 'wb') as f:
-            f.write(ET.tostring(root))
 
     @loadingbar
     def request(self) -> requests.Response:
